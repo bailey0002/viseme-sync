@@ -243,7 +243,7 @@ class AzureServices3D {
             
             if (frame.timeMs <= elapsed) {
                 // Apply this frame's blendshapes
-                BlendShapeMapper.applyFrame(frame.shapes, 1.0);
+                window.BlendShapeMapper.applyFrame(frame.shapes, 1.0);
                 
                 // Emit for debug display
                 this.emit('blendshapeFrame', {
@@ -259,11 +259,10 @@ class AzureServices3D {
             }
         }
 
-        // Continue processing if more frames remain
-        if (this.currentFrameIndex < this.blendShapeFrames.length && this.isSpeaking) {
+        // ALWAYS continue the animation loop while speaking
+        // New frames may still be arriving from Azure
+        if (this.isSpeaking) {
             this.animationFrameId = requestAnimationFrame(() => this.processBlendShapeFrames());
-        } else if (this.currentFrameIndex >= this.blendShapeFrames.length) {
-            console.log('All blendshape frames processed');
         }
     }
 
