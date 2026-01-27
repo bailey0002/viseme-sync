@@ -269,31 +269,34 @@ class AvatarRenderer {
      * Position arms in a natural pose (lowered from T-pose)
      */
     positionArms() {
-        // Right arm - rotate down and slightly forward
-        if (this.bones.RightShoulder) {
-            this.bones.RightShoulder.rotation.z = -0.3; // Rotate down
-        }
+        // Different rigs use different rotation orders/axes
+        // Try rotating on different axes to find what works
+        
+        // Right side - rotate arm down from T-pose
         if (this.bones.RightArm) {
-            this.bones.RightArm.rotation.z = -1.2; // Rotate down significantly
-            this.bones.RightArm.rotation.x = 0.2;  // Slightly forward
+            // Reset first
+            this.bones.RightArm.rotation.set(0, 0, 0);
+            // Try rotating forward (X) and down (Z)
+            this.bones.RightArm.rotation.x = 0.3;  // Forward
+            this.bones.RightArm.rotation.z = 0.9;  // Down (positive for right side in most rigs)
         }
         if (this.bones.RightForeArm) {
-            this.bones.RightForeArm.rotation.z = -0.3; // Slight bend at elbow
+            this.bones.RightForeArm.rotation.set(0, 0, 0);
+            this.bones.RightForeArm.rotation.z = 0.2;  // Slight bend
         }
         
-        // Left arm - mirror of right
-        if (this.bones.LeftShoulder) {
-            this.bones.LeftShoulder.rotation.z = 0.3;
-        }
+        // Left side - mirror
         if (this.bones.LeftArm) {
-            this.bones.LeftArm.rotation.z = 1.2;
-            this.bones.LeftArm.rotation.x = 0.2;
+            this.bones.LeftArm.rotation.set(0, 0, 0);
+            this.bones.LeftArm.rotation.x = 0.3;
+            this.bones.LeftArm.rotation.z = -0.9;  // Negative for left side
         }
         if (this.bones.LeftForeArm) {
-            this.bones.LeftForeArm.rotation.z = 0.3;
+            this.bones.LeftForeArm.rotation.set(0, 0, 0);
+            this.bones.LeftForeArm.rotation.z = -0.2;
         }
         
-        console.log('Arms positioned to natural resting pose');
+        console.log('Arms positioned - check if lowered correctly');
     }
 
     /**
