@@ -437,20 +437,24 @@ class AzureServicesViseme {
      */
     buildSSML(text) {
         const { name, rate } = this.config.voice;
-        const ratePercent = Math.round(rate * 100);
+        
+        // Convert rate (0.5-1.5) to relative percentage
+        // rate=1.0 -> "+0%", rate=0.5 -> "-50%", rate=1.5 -> "+50%"
+        const relativePercent = Math.round((rate - 1.0) * 100);
+        const rateString = relativePercent >= 0 ? `+${relativePercent}%` : `${relativePercent}%`;
 
         const escaped = text
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
 
-        console.log(`Building SSML: voice=${name}, rate=${ratePercent}%`);
+        console.log(`Building SSML: voice=${name}, rate=${rateString} (slider=${rate})`);
 
         // Use redlips_front for Viseme IDs (0-21)
         return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="en-US">
             <voice name="${name}">
                 <mstts:viseme type="redlips_front"/>
-                <prosody rate="${ratePercent}%">${escaped}</prosody>
+                <prosody rate="${rateString}">${escaped}</prosody>
             </voice>
         </speak>`;
     }

@@ -198,7 +198,7 @@ class AvatarRenderer {
     }
 
     /**
-     * Adjust camera to show full body
+     * Adjust camera to show head and shoulders
      */
     focusOnFace() {
         if (!this.model) return;
@@ -206,20 +206,22 @@ class AvatarRenderer {
         // Get model bounds
         const box = new THREE.Box3().setFromObject(this.model);
         const height = box.max.y - box.min.y;
-        const centerY = height / 2;
+        
+        // Target face level (about 85-90% up the model, roughly eye level)
+        const faceY = height * 0.88;
 
         // Rotate model to face camera (Avaturn models often face wrong direction)
         this.model.rotation.y = Math.PI;
         
-        // Position camera to show full body, straight on
-        this.camera.position.set(0, centerY, 2.5);
-        this.controls.target.set(0, centerY, 0);
+        // Position camera close for head/shoulder view
+        this.camera.position.set(0, faceY, 0.65);
+        this.controls.target.set(0, faceY, 0);
         
         this.camera.up.set(0, 1, 0);
-        this.camera.lookAt(0, centerY, 0);
+        this.camera.lookAt(0, faceY, 0);
         
         this.controls.update();
-        console.log('Camera positioned for full body view');
+        console.log('Camera positioned for head/shoulder view, faceY:', faceY);
     }
 
     /**
