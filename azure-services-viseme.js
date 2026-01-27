@@ -18,6 +18,9 @@ class AzureServicesViseme {
         this.isListening = false;
         this.isSpeaking = false;
         this.conversationHistory = [];
+        
+        // Viseme intensity (mouth expressiveness)
+        this.visemeIntensity = 1.0;
 
         // Azure SDK objects
         this.speechConfig = null;
@@ -229,8 +232,8 @@ class AzureServicesViseme {
             const viseme = this.visemeQueue[this.currentVisemeIndex];
             
             if (viseme.audioOffset <= elapsed) {
-                // Apply this viseme with smooth blending
-                window.VisemeMapper.blendToViseme(viseme.visemeId, 0.4, 1.0);
+                // Apply this viseme with smooth blending and intensity
+                window.VisemeMapper.blendToViseme(viseme.visemeId, 0.4, this.visemeIntensity);
                 
                 // Emit for debug display
                 this.emit('viseme', {
@@ -468,6 +471,15 @@ class AzureServicesViseme {
         if (this.speechConfig) {
             this.speechConfig.speechSynthesisVoiceName = voiceName;
         }
+    }
+
+    /**
+     * Set viseme intensity (mouth expressiveness)
+     * @param {number} intensity - 0.3 to 1.5 (1.0 = normal)
+     */
+    setVisemeIntensity(intensity) {
+        this.visemeIntensity = Math.max(0.3, Math.min(1.5, intensity));
+        console.log('Viseme intensity set to:', this.visemeIntensity);
     }
 
     /**

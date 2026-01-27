@@ -31,6 +31,8 @@ class App {
             voiceSelect: document.getElementById('voice-select'),
             speedSlider: document.getElementById('speed-slider'),
             speedValue: document.getElementById('speed-value'),
+            intensitySlider: document.getElementById('intensity-slider'),
+            intensityValue: document.getElementById('intensity-value'),
             chatMessages: document.getElementById('chat-messages'),
             userInput: document.getElementById('user-input'),
             micBtn: document.getElementById('mic-btn'),
@@ -220,6 +222,17 @@ class App {
                 rate
             );
         });
+
+        // Intensity slider - controls mouth movement expressiveness
+        if (this.elements.intensitySlider) {
+            this.elements.intensitySlider.addEventListener('input', () => {
+                const intensity = parseFloat(this.elements.intensitySlider.value);
+                this.elements.intensityValue.textContent = Math.round(intensity * 100) + '%';
+                if (this.azure) {
+                    this.azure.setVisemeIntensity(intensity);
+                }
+            });
+        }
 
         // Send button
         this.elements.sendBtn.addEventListener('click', () => this.sendMessage());

@@ -23,6 +23,15 @@ class AvatarRenderer {
         this.lastFpsUpdate = 0;
         this.currentFps = 0;
         
+        // Bone references for posing
+        this.bones = {};
+        
+        // Head mesh reference for expressions
+        this.headMesh = null;
+        
+        // Expression system
+        this.expressionSystem = null;
+        
         // Callbacks
         this.onLoad = null;
         this.onError = null;
@@ -180,6 +189,21 @@ class AvatarRenderer {
                         window.BlendShapeMapper.initialize(this.model);
                     }
 
+                    // Store bone references and position arms
+                    this.setupBones();
+                    
+                    // Store head mesh reference for expressions
+                    this.model.traverse((node) => {
+                        if (node.name === 'Head_Mesh') {
+                            this.headMesh = node;
+                            window.headMesh = node; // Global access for console testing
+                        }
+                    });
+                    
+                    // Initialize expression system
+                    this.expressionSystem = new ExpressionSystem(this.headMesh);
+                    this.expressionSystem.start();
+
                     // Adjust camera to focus on face
                     this.focusOnFace();
 
@@ -222,6 +246,54 @@ class AvatarRenderer {
         
         this.controls.update();
         console.log('Camera positioned for head/shoulder view, faceY:', faceY);
+    }
+
+    /**
+     * Setup bone references and position arms naturally
+     */
+    setupBones() {
+        // Find and store bone references
+        this.model.traverse((node) => {
+            if (node.isBone) {
+                this.bones[node.name] = node;
+            }
+        });
+        
+        console.log('Found bones:', Object.keys(this.bones).length);
+        
+        // Lower arms from T-pose to a natural resting position
+        this.positionArms();
+    }
+
+    /**
+     * Position arms in a natural pose (lowered from T-pose)
+     */
+    positionArms() {
+        // Right arm - rotate down and slightly forward
+        if (this.bones.RightShoulder) {
+            this.bones.RightShoulder.rotation.z = -0.3; // Rotate down
+        }
+        if (this.bones.RightArm) {
+            this.bones.RightArm.rotation.z = -1.2; // Rotate down significantly
+            this.bones.RightArm.rotation.x = 0.2;  // Slightly forward
+        }
+        if (this.bones.RightForeArm) {
+            this.bones.RightForeArm.rotation.z = -0.3; // Slight bend at elbow
+        }
+        
+        // Left arm - mirror of right
+        if (this.bones.LeftShoulder) {
+            this.bones.LeftShoulder.rotation.z = 0.3;
+        }
+        if (this.bones.LeftArm) {
+            this.bones.LeftArm.rotation.z = 1.2;
+            this.bones.LeftArm.rotation.x = 0.2;
+        }
+        if (this.bones.LeftForeArm) {
+            this.bones.LeftForeArm.rotation.z = 0.3;
+        }
+        
+        console.log('Arms positioned to natural resting pose');
     }
 
     /**
@@ -276,6 +348,9 @@ class AvatarRenderer {
      * Dispose of resources
      */
     dispose() {
+        if (this.expressionSystem) {
+            this.expressionSystem.stop();
+        }
         if (this.renderer) {
             this.renderer.dispose();
         }
@@ -285,5 +360,211 @@ class AvatarRenderer {
     }
 }
 
+/**
+ * Expression System - Handles random/reactive facial expressions
+ */
+class ExpressionSystem {
+    constructor(headMesh) {
+        this.headMesh = headMesh;
+        this.isRunning = false;
+        this.blinkInterval = null;
+        this.microExpressionInterval = null;
+        
+        // Expression state
+        this.currentExpressions = {};
+        
+        // Available expressions (non-viseme morph targets)
+        this.expressions = {
+            // Blinks
+            eyeBlinkLeft: 'eyeBlinkLeft',
+            eyeBlinkRight: 'eyeBlinkRight',
+            eyesClosed: 'eyesClosed',
+            
+            // Brows
+            browDownLeft: 'browDownLeft',
+            browDownRight: 'browDownRight',
+            browInnerUp: 'browInnerUp',
+            browOuterUpLeft: 'browOuterUpLeft',
+            browOuterUpRight: 'browOuterUpRight',
+            
+            // Eyes
+            eyeSquintLeft: 'eyeSquintLeft',
+            eyeSquintRight: 'eyeSquintRight',
+            eyeWideLeft: 'eyeWideLeft',
+            eyeWideRight: 'eyeWideRight',
+            
+            // Mouth (non-viseme)
+            mouthSmileLeft: 'mouthSmileLeft',
+            mouthSmileRight: 'mouthSmileRight',
+            mouthFrownLeft: 'mouthFrownLeft',
+            mouthFrownRight: 'mouthFrownRight',
+            
+            // Cheeks
+            cheekSquintLeft: 'cheekSquintLeft',
+            cheekSquintRight: 'cheekSquintRight',
+            cheekPuff: 'cheekPuff'
+        };
+    }
+
+    start() {
+        if (!this.headMesh || !this.headMesh.morphTargetDictionary) {
+            console.warn('ExpressionSystem: No head mesh or morph targets available');
+            return;
+        }
+        
+        this.isRunning = true;
+        
+        // Start random blinking (every 2-6 seconds)
+        this.startBlinking();
+        
+        // Start subtle micro-expressions (every 3-8 seconds)
+        this.startMicroExpressions();
+        
+        console.log('ExpressionSystem started');
+    }
+
+    stop() {
+        this.isRunning = false;
+        if (this.blinkInterval) clearInterval(this.blinkInterval);
+        if (this.microExpressionInterval) clearInterval(this.microExpressionInterval);
+    }
+
+    /**
+     * Random blinking
+     */
+    startBlinking() {
+        const blink = () => {
+            if (!this.isRunning) return;
+            
+            // Quick blink animation
+            this.animateExpression(['eyeBlinkLeft', 'eyeBlinkRight'], 1.0, 150, () => {
+                this.animateExpression(['eyeBlinkLeft', 'eyeBlinkRight'], 0, 100);
+            });
+            
+            // Schedule next blink (2-6 seconds)
+            const nextBlink = 2000 + Math.random() * 4000;
+            this.blinkInterval = setTimeout(blink, nextBlink);
+        };
+        
+        // Start first blink after 1-3 seconds
+        this.blinkInterval = setTimeout(blink, 1000 + Math.random() * 2000);
+    }
+
+    /**
+     * Subtle micro-expressions for liveliness
+     */
+    startMicroExpressions() {
+        const microExpressions = [
+            // Slight eyebrow raise (curious/attentive)
+            () => {
+                this.animateExpression(['browInnerUp'], 0.3, 400, () => {
+                    setTimeout(() => this.animateExpression(['browInnerUp'], 0, 600), 800);
+                });
+            },
+            // Slight squint (thinking)
+            () => {
+                this.animateExpression(['eyeSquintLeft', 'eyeSquintRight'], 0.2, 300, () => {
+                    setTimeout(() => this.animateExpression(['eyeSquintLeft', 'eyeSquintRight'], 0, 400), 600);
+                });
+            },
+            // Subtle smile
+            () => {
+                this.animateExpression(['mouthSmileLeft', 'mouthSmileRight'], 0.15, 500, () => {
+                    setTimeout(() => this.animateExpression(['mouthSmileLeft', 'mouthSmileRight'], 0, 700), 1000);
+                });
+            },
+            // One eyebrow raise
+            () => {
+                const side = Math.random() > 0.5 ? 'browOuterUpLeft' : 'browOuterUpRight';
+                this.animateExpression([side], 0.4, 300, () => {
+                    setTimeout(() => this.animateExpression([side], 0, 400), 500);
+                });
+            }
+        ];
+
+        const doMicroExpression = () => {
+            if (!this.isRunning) return;
+            
+            // Pick a random micro-expression
+            const expr = microExpressions[Math.floor(Math.random() * microExpressions.length)];
+            expr();
+            
+            // Schedule next (3-8 seconds)
+            const nextExpr = 3000 + Math.random() * 5000;
+            this.microExpressionInterval = setTimeout(doMicroExpression, nextExpr);
+        };
+        
+        // Start after 2-4 seconds
+        this.microExpressionInterval = setTimeout(doMicroExpression, 2000 + Math.random() * 2000);
+    }
+
+    /**
+     * Animate expression(s) to a target value
+     */
+    animateExpression(names, targetValue, duration, onComplete) {
+        if (!this.headMesh) return;
+        
+        const dict = this.headMesh.morphTargetDictionary;
+        const influences = this.headMesh.morphTargetInfluences;
+        
+        names.forEach(name => {
+            if (dict[name] === undefined) return;
+            
+            const idx = dict[name];
+            const startValue = influences[idx];
+            const startTime = performance.now();
+            
+            const animate = () => {
+                const elapsed = performance.now() - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                
+                // Ease out
+                const eased = 1 - Math.pow(1 - t, 2);
+                influences[idx] = startValue + (targetValue - startValue) * eased;
+                
+                if (t < 1) {
+                    requestAnimationFrame(animate);
+                } else if (onComplete) {
+                    onComplete();
+                }
+            };
+            
+            requestAnimationFrame(animate);
+        });
+    }
+
+    /**
+     * Set expression immediately (for reactive expressions)
+     */
+    setExpression(name, value) {
+        if (!this.headMesh) return;
+        const dict = this.headMesh.morphTargetDictionary;
+        if (dict[name] !== undefined) {
+            this.headMesh.morphTargetInfluences[dict[name]] = value;
+        }
+    }
+
+    /**
+     * React to user input (e.g., show interest when user speaks)
+     */
+    showInterest() {
+        this.animateExpression(['browInnerUp', 'eyeWideLeft', 'eyeWideRight'], 0.3, 200);
+        setTimeout(() => {
+            this.animateExpression(['browInnerUp', 'eyeWideLeft', 'eyeWideRight'], 0, 500);
+        }, 1000);
+    }
+
+    /**
+     * React to completing speech
+     */
+    showSatisfaction() {
+        this.animateExpression(['mouthSmileLeft', 'mouthSmileRight', 'cheekSquintLeft', 'cheekSquintRight'], 0.25, 300);
+        setTimeout(() => {
+            this.animateExpression(['mouthSmileLeft', 'mouthSmileRight', 'cheekSquintLeft', 'cheekSquintRight'], 0, 600);
+        }, 800);
+    }
+}
+
 // Make available globally
 window.AvatarRenderer = AvatarRenderer;
+window.ExpressionSystem = ExpressionSystem;
