@@ -188,21 +188,21 @@ class AvatarRenderer {
         const box = new THREE.Box3().setFromObject(this.model);
         const height = box.max.y - box.min.y;
         
-        // Target upper body (about 75% up the model)
-        const targetY = height * 0.75;
+        // Target face level (about 90% up the model, roughly eye level)
+        const targetY = height * 0.85;
 
         // Rotate model 180 degrees to face camera
         this.model.rotation.y = Math.PI;
         
-        // Position camera for head/upper torso view
-        this.camera.position.set(0, targetY, 1.0);
+        // Position camera for head/shoulder view, closer in
+        this.camera.position.set(0, targetY, 0.8);
         this.controls.target.set(0, targetY, 0);
         
         this.camera.up.set(0, 1, 0);
         this.camera.lookAt(0, targetY, 0);
         
         this.controls.update();
-        console.log('Camera positioned for head/upper torso view');
+        console.log('Camera positioned for head/shoulder view, targetY:', targetY);
     }
 
     /**
