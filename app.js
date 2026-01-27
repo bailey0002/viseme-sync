@@ -344,16 +344,18 @@ class App {
         setInterval(() => {
             if (this.azure) {
                 const state = this.azure.getDebugState();
-                this.elements.debugFrames.textContent = state.totalFrames;
+                if (this.elements.debugFrames) {
+                    this.elements.debugFrames.textContent = state.totalFrames;
+                }
                 
-                if (typeof BlendShapeMapper !== 'undefined') {
+                if (typeof BlendShapeMapper !== 'undefined' && this.elements.debugActive) {
                     const stats = BlendShapeMapper.getStats();
                     this.elements.debugActive.textContent = 
                         `${stats.activeCount} (max: ${stats.maxName} @ ${stats.maxValue})`;
                 }
             }
 
-            if (this.renderer) {
+            if (this.renderer && this.elements.debugFps) {
                 this.elements.debugFps.textContent = this.renderer.getFps();
             }
         }, 250);
