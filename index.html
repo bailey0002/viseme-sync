@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Avatar Lip-Sync with Azure TTS</title>
     <link rel="stylesheet" href="styles.css">
-    
-    <!-- Three.js -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="icon" href="data:,">
     
     <!-- Azure Speech SDK -->
     <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
@@ -131,10 +127,19 @@
         </div>
     </div>
     
-    <!-- Scripts -->
-    <script src="blendshape-mapper.js"></script>
-    <script src="avatar-renderer.js"></script>
-    <script src="azure-services-3d.js"></script>
-    <script src="app.js"></script>
+    <!-- Scripts as ES Modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    
+    <script type="module" src="blendshape-mapper.js"></script>
+    <script type="module" src="avatar-renderer.js"></script>
+    <script type="module" src="azure-services-3d.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>

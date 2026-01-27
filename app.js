@@ -4,6 +4,11 @@
  * Auto-connects if config.js has valid credentials
  */
 
+// Wait for other modules to load
+const { AvatarRenderer } = window;
+const { AzureServices3D } = window;
+const { BlendShapeMapper } = window;
+
 class App {
     constructor() {
         this.renderer = null;

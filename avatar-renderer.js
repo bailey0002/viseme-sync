@@ -3,6 +3,10 @@
  * Handles Three.js scene setup, model loading, and rendering
  */
 
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 class AvatarRenderer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -45,12 +49,12 @@ class AvatarRenderer {
         });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
-        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.0;
 
         // Orbit Controls
-        this.controls = new THREE.OrbitControls(this.camera, this.canvas);
+        this.controls = new OrbitControls(this.camera, this.canvas);
         this.controls.target.set(0, 1.5, 0);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
@@ -100,7 +104,7 @@ class AvatarRenderer {
      */
     async loadModel(url) {
         return new Promise((resolve, reject) => {
-            const loader = new THREE.GLTFLoader();
+            const loader = new GLTFLoader();
             
             loader.load(
                 url,
@@ -136,7 +140,7 @@ class AvatarRenderer {
                     }
 
                     // Initialize blendshape mapper
-                    const success = BlendShapeMapper.initialize(this.model);
+                    const success = window.BlendShapeMapper.initialize(this.model);
                     if (!success) {
                         console.warn('No blendshapes found in model');
                     }
