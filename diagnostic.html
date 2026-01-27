@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vestis Lip-Sync Diagnostic Harness</title>
+    <style>
+        :root {
+            --gs-dark: #1a1a2e;
+            --gs-mid: #16213e;
+            --gs-accent: #0f3460;
+            --gs-highlight: #e94560;
+            --gs-text: #eaeaea;
+            --gs-success: #00d26a;
+            --gs-warning: #ffc107;
+            --gs-error: #ff4757;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--gs-dark);
+            color: var(--gs-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: var(--gs-mid);
+            padding: 1rem 2rem;
+            border-bottom: 2px solid var(--gs-highlight);
+        }
+        
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--gs-highlight);
+        }
+        
+        header p {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin-top: 0.25rem;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        #viewport {
+            background: #000;
+            position: relative;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #loading-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--gs-accent);
+            border-top-color: var(--gs-highlight);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .sidebar {
+            background: var(--gs-mid);
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .panel {
+            background: var(--gs-accent);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            background: rgba(0,0,0,0.3);
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .panel-header:hover {
+            background: rgba(0,0,0,0.4);
+        }
+        
+        .panel-content {
+            padding: 1rem;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .status-item {
+            display: contents;
+        }
+        
+        .status-label {
+            opacity: 0.8;
+        }
+        
+        .status-value {
+            text-align: right;
+            font-family: monospace;
+        }
+        
+        .status-ok { color: var(--gs-success); }
+        .status-warn { color: var(--gs-warning); }
+        .status-error { color: var(--gs-error); }
+        .status-pending { color: var(--gs-text); opacity: 0.5; }
+        
+        .btn {
+            background: var(--gs-highlight);
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        
+        .btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: var(--gs-accent);
+            border: 1px solid var(--gs-highlight);
+        }
+        
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        
+        .viseme-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        
+        .viseme-btn {
+            background: var(--gs-dark);
+            border: 1px solid var(--gs-accent);
+            color: var(--gs-text);
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-family: monospace;
+            transition: all 0.15s;
+        }
+        
+        .viseme-btn:hover {
+            background: var(--gs-highlight);
+            border-color: var(--gs-highlight);
+        }
+        
+        .viseme-btn.active {
+            background: var(--gs-success);
+            border-color: var(--gs-success);
+            color: black;
+        }
+        
+        #console-output {
+            background: #0d0d0d;
+            border-radius: 4px;
+            padding: 0.75rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 0.25rem;
+            word-break: break-all;
+        }
+        
+        .log-info { color: #6fb3d2; }
+        .log-success { color: var(--gs-success); }
+        .log-warn { color: var(--gs-warning); }
+        .log-error { color: var(--gs-error); }
+        .log-viseme { color: #c792ea; }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+        
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .slider-row label {
+            min-width: 80px;
+            font-size: 0.85rem;
+        }
+        
+        .slider-row span {
+            min-width: 40px;
+            text-align: right;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        
+        .mesh-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: var(--gs-dark);
+            border-radius: 4px;
+            padding: 0.5rem;
+        }
+        
+        .mesh-item {
+            padding: 0.4rem 0.5rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .mesh-item:hover {
+            background: var(--gs-accent);
+        }
+        
+        .mesh-item.selected {
+            background: var(--gs-highlight);
+        }
+        
+        .mesh-item .count {
+            opacity: 0.6;
+            font-size: 0.75rem;
+        }
+        
+        .azure-test {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .azure-test input {
+            background: var(--gs-dark);
+            border: 1px solid var(--gs-accent);
+            color: var(--gs-text);
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .azure-test input:focus {
+            outline: none;
+            border-color: var(--gs-highlight);
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+        }
+        
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .sequence-display {
+            background: var(--gs-dark);
+            border-radius: 4px;
+            padding: 0.5rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔬 Vestis Lip-Sync Diagnostic Harness</h1>
+        <p>Comprehensive debugging tool for Azure Speech + Three.js + Oculus Visemes</p>
+    </header>
+    
+    <div class="container">
+        <div id="viewport">
+            <div id="canvas-container"></div>
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+                <div id="loading-text">Initializing Three.js...</div>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <!-- Status Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>📊 System Status</span>
+                    <span id="overall-status" class="status-pending">●</span>
+                </div>
+                <div class="panel-content">
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <span class="status-label">Three.js</span>
+                            <span id="status-threejs" class="status-value status-pending">Checking...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Model Loaded</span>
+                            <span id="status-model" class="status-value status-pending">Pending</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Morph Meshes</span>
+                            <span id="status-morphmesh" class="status-value status-pending">—</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Viseme Count</span>
+                            <span id="status-visemes" class="status-value status-pending">—</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Azure Config</span>
+                            <span id="status-azure" class="status-value status-pending">—</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">SDK Loaded</span>
+                            <span id="status-sdk" class="status-value status-pending">—</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="Diagnostic.runFullCheck()">🔄 Re-run Diagnostics</button>
+                </div>
+            </div>
+            
+            <!-- Model Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>📦 Model</span>
+                </div>
+                <div class="panel-content">
+                    <div class="file-input-wrapper">
+                        <button class="btn btn-secondary">📁 Load GLB File</button>
+                        <input type="file" id="model-file" accept=".glb,.gltf" onchange="Diagnostic.loadModelFile(this.files[0])">
+                    </div>
+                    <div style="text-align: center; margin: 0.5rem 0; opacity: 0.6; font-size: 0.85rem;">— or —</div>
+                    <input type="text" id="model-url" placeholder="Enter GLB URL..." style="width: 100%; margin-bottom: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="Diagnostic.loadModelFromUrl()">🌐 Load from URL</button>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label style="font-size: 0.85rem; opacity: 0.8;">Meshes with Morph Targets:</label>
+                        <div id="mesh-list" class="mesh-list">
+                            <div style="opacity: 0.5; font-style: italic;">No model loaded</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Viseme Test Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>👄 Viseme Testing</span>
+                </div>
+                <div class="panel-content">
+                    <div class="slider-row">
+                        <label>Intensity:</label>
+                        <input type="range" id="viseme-intensity" min="0" max="1" step="0.1" value="1">
+                        <span id="intensity-value">1.0</span>
+                    </div>
+                    
+                    <div style="margin: 0.75rem 0; font-size: 0.85rem; opacity: 0.8;">Oculus Visemes (click to test):</div>
+                    <div class="viseme-grid" id="viseme-buttons">
+                        <!-- Generated by JS -->
+                    </div>
+                    
+                    <div class="btn-group" style="margin-top: 1rem;">
+                        <button class="btn btn-secondary" onclick="Diagnostic.resetVisemes()">Reset All</button>
+                        <button class="btn" onclick="Diagnostic.runVisemeSequence()">▶ Test Sequence</button>
+                    </div>
+                    
+                    <div style="margin-top: 0.75rem;">
+                        <label style="font-size: 0.85rem; opacity: 0.8;">Last Sequence:</label>
+                        <div id="sequence-display" class="sequence-display">
+                            <span style="opacity: 0.5; font-style: italic;">No sequence run yet</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Azure Test Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>☁️ Azure Speech Test</span>
+                </div>
+                <div class="panel-content">
+                    <div class="azure-test">
+                        <input type="text" id="azure-key" placeholder="Speech Key (or use CONFIG)">
+                        <input type="text" id="azure-region" placeholder="Region (e.g., eastus)">
+                        <input type="text" id="test-text" value="Hello, this is a lip sync test." placeholder="Text to speak">
+                        <button class="btn" onclick="Diagnostic.testAzureSpeech()" id="azure-speak-btn">🎤 Test Speech + Visemes</button>
+                        <button class="btn btn-secondary" onclick="Diagnostic.stopSpeech()">⏹ Stop</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Console Panel -->
+            <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="panel-header" onclick="document.getElementById('console-output').innerHTML = ''">
+                    <span>📜 Console Log</span>
+                    <span style="font-size: 0.75rem; opacity: 0.6;">Click to clear</span>
+                </div>
+                <div class="panel-content" style="flex: 1; display: flex; flex-direction: column;">
+                    <div id="console-output" style="flex: 1;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Azure Speech SDK -->
+    <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+
+    <script>
+    // ============================================================
+    // VESTIS LIP-SYNC DIAGNOSTIC HARNESS
+    // Version: 1.0.0
+    // ============================================================
+    
+    const OCULUS_VISEMES = [
+        'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD',
+        'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR',
+        'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U'
+    ];
+    
+    // Azure Viseme ID to Oculus mapping (refined)
+    const AZURE_TO_OCULUS = {
+        0:  'viseme_sil',   // Silence
+        1:  'viseme_aa',    // æ, ə, ʌ
+        2:  'viseme_aa',    // ɑ
+        3:  'viseme_O',     // ɔ
+        4:  'viseme_E',     // ɛ, ʊ
+        5:  'viseme_RR',    // ɝ
+        6:  'viseme_I',     // j, i, ɪ
+        7:  'viseme_U',     // w, u
+        8:  'viseme_O',     // o
+        9:  'viseme_U',     // aʊ
+        10: 'viseme_O',     // ɔɪ
+        11: 'viseme_I',     // aɪ
+        12: 'viseme_sil',   // h
+        13: 'viseme_RR',    // ɹ
+        14: 'viseme_nn',    // l
+        15: 'viseme_SS',    // s, z
+        16: 'viseme_CH',    // ʃ, tʃ, dʒ, ʒ
+        17: 'viseme_TH',    // θ, ð
+        18: 'viseme_FF',    // f, v
+        19: 'viseme_DD',    // d, t, n
+        20: 'viseme_kk',    // k, g, ŋ
+        21: 'viseme_PP',    // p, b, m
+    };
+    
+    // ============================================================
+    // THREE.JS SETUP
+    // ============================================================
+    
+    let scene, camera, renderer, controls;
+    let currentModel = null;
+    let morphMeshes = [];
+    let selectedMesh = null;
+    let animationId = null;
+    
+    function initThreeJS() {
+        const container = document.getElementById('canvas-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        
+        // Camera
+        camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+        camera.position.set(0, 1.5, 2);
+        
+        // Renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        container.appendChild(renderer.domElement);
+        
+        // Controls
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1.2, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.update();
+        
+        // Lighting
+        const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambient);
+        
+        const key = new THREE.DirectionalLight(0xffffff, 1);
+        key.position.set(2, 3, 2);
+        scene.add(key);
+        
+        const fill = new THREE.DirectionalLight(0xffffff, 0.3);
+        fill.position.set(-2, 1, -1);
+        scene.add(fill);
+        
+        // Grid helper
+        const grid = new THREE.GridHelper(4, 20, 0x333333, 0x222222);
+        scene.add(grid);
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        });
+        
+        // Animation loop
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        Diagnostic.log('Three.js initialized', 'success');
+        document.getElementById('status-threejs').textContent = 'v' + THREE.REVISION;
+        document.getElementById('status-threejs').className = 'status-value status-ok';
+        
+        hideLoading();
+    }
+    
+    function hideLoading() {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+    
+    function showLoading(text) {
+        document.getElementById('loading-text').textContent = text;
+        document.getElementById('loading-overlay').style.display = 'flex';
+    }
+    
+    // ============================================================
+    // DIAGNOSTIC MODULE
+    // ============================================================
+    
+    const Diagnostic = {
+        synthesizer: null,
+        player: null,
+        visemeQueue: [],
+        isPlaying: false,
+        
+        log(message, type = 'info') {
+            const output = document.getElementById('console-output');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span style="opacity:0.5">[${timestamp}]</span> ${message}`;
+            output.appendChild(entry);
+            output.scrollTop = output.scrollHeight;
+            
+            // Also log to actual console
+            const consoleMethod = type === 'error' ? 'error' : type === 'warn' ? 'warn' : 'log';
+            console[consoleMethod](`[Diagnostic] ${message}`);
+        },
+        
+        updateStatus(id, text, status) {
+            const el = document.getElementById(id);
+            el.textContent = text;
+            el.className = `status-value status-${status}`;
+        },
+        
+        // --------------------------------------------------------
+        // MODEL LOADING
+        // --------------------------------------------------------
+        
+        loadModelFile(file) {
+            if (!file) return;
+            showLoading('Loading model...');
+            Diagnostic.log(`Loading file: ${file.name}`, 'info');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const arrayBuffer = e.target.result;
+                Diagnostic.loadModelFromBuffer(arrayBuffer, file.name);
+            };
+            reader.onerror = () => {
+                Diagnostic.log('Failed to read file', 'error');
+                hideLoading();
+            };
+            reader.readAsArrayBuffer(file);
+        },
+        
+        loadModelFromUrl() {
+            const url = document.getElementById('model-url').value.trim();
+            if (!url) {
+                Diagnostic.log('Please enter a URL', 'warn');
+                return;
+            }
+            
+            showLoading('Loading model from URL...');
+            Diagnostic.log(`Loading from: ${url}`, 'info');
+            
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                url,
+                (gltf) => Diagnostic.processLoadedModel(gltf),
+                (progress) => {
+                    const pct = (progress.loaded / progress.total * 100).toFixed(0);
+                    document.getElementById('loading-text').textContent = `Loading... ${pct}%`;
+                },
+                (error) => {
+                    Diagnostic.log(`Load error: ${error.message}`, 'error');
+                    Diagnostic.updateStatus('status-model', 'Error', 'error');
+                    hideLoading();
+                }
+            );
+        },
+        
+        loadModelFromBuffer(arrayBuffer, filename) {
+            const loader = new THREE.GLTFLoader();
+            loader.parse(
+                arrayBuffer,
+                '',
+                (gltf) => Diagnostic.processLoadedModel(gltf),
+                (error) => {
+                    Diagnostic.log(`Parse error: ${error.message}`, 'error');
+                    Diagnostic.updateStatus('status-model', 'Error', 'error');
+                    hideLoading();
+                }
+            );
+        },
+        
+        processLoadedModel(gltf) {
+            // Remove old model
+            if (currentModel) {
+                scene.remove(currentModel);
+                currentModel = null;
+            }
+            
+            currentModel = gltf.scene;
+            scene.add(currentModel);
+            
+            Diagnostic.log('Model added to scene', 'success');
+            Diagnostic.updateStatus('status-model', 'Loaded', 'ok');
+            
+            // Find morph target meshes
+            morphMeshes = [];
+            let totalMeshes = 0;
+            
+            currentModel.traverse((child) => {
+                if (child.isMesh) {
+                    totalMeshes++;
+                    
+                    // CRITICAL: Call updateMorphTargets to populate morphTargetInfluences
+                    if (child.geometry?.morphAttributes?.position) {
+                        child.updateMorphTargets();
+                        Diagnostic.log(`Called updateMorphTargets() on: ${child.name || 'unnamed'}`, 'info');
+                    }
+                    
+                    // Check for morph targets
+                    if (child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 0) {
+                        const visemeKeys = Object.keys(child.morphTargetDictionary)
+                            .filter(k => k.toLowerCase().includes('viseme'));
+                        
+                        morphMeshes.push({
+                            mesh: child,
+                            name: child.name || `Mesh_${morphMeshes.length}`,
+                            allTargets: Object.keys(child.morphTargetDictionary),
+                            visemes: visemeKeys,
+                            dictionary: child.morphTargetDictionary,
+                            influences: child.morphTargetInfluences
+                        });
+                        
+                        Diagnostic.log(`Found morph mesh: ${child.name} (${visemeKeys.length} visemes, ${Object.keys(child.morphTargetDictionary).length} total)`, 'success');
+                    }
+                }
+            });
+            
+            Diagnostic.log(`Scanned ${totalMeshes} meshes, ${morphMeshes.length} have morph targets`, 'info');
+            
+            if (morphMeshes.length === 0) {
+                Diagnostic.log('⚠️ NO MORPH TARGETS FOUND - Model may not have visemes baked in!', 'error');
+                Diagnostic.updateStatus('status-morphmesh', '0 (ERROR)', 'error');
+                Diagnostic.updateStatus('status-visemes', 'None', 'error');
+            } else {
+                Diagnostic.updateStatus('status-morphmesh', morphMeshes.length.toString(), 'ok');
+                
+                // Count total unique visemes
+                const allVisemes = new Set();
+                morphMeshes.forEach(m => m.visemes.forEach(v => allVisemes.add(v)));
+                Diagnostic.updateStatus('status-visemes', allVisemes.size.toString(), allVisemes.size > 0 ? 'ok' : 'warn');
+                
+                // Select first mesh with visemes as default
+                const meshWithVisemes = morphMeshes.find(m => m.visemes.length > 0);
+                if (meshWithVisemes) {
+                    selectedMesh = meshWithVisemes;
+                    Diagnostic.log(`Auto-selected mesh: ${selectedMesh.name}`, 'info');
+                }
+            }
+            
+            // Update mesh list UI
+            Diagnostic.updateMeshList();
+            
+            // Center camera on model
+            const box = new THREE.Box3().setFromObject(currentModel);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            
+            controls.target.copy(center);
+            camera.position.set(center.x, center.y + size.y * 0.3, center.z + size.y * 1.5);
+            controls.update();
+            
+            hideLoading();
+        },
+        
+        updateMeshList() {
+            const container = document.getElementById('mesh-list');
+            
+            if (morphMeshes.length === 0) {
+                container.innerHTML = '<div style="opacity: 0.5; font-style: italic;">No morph target meshes found</div>';
+                return;
+            }
+            
+            container.innerHTML = morphMeshes.map((m, i) => `
+                <div class="mesh-item ${selectedMesh === m ? 'selected' : ''}" onclick="Diagnostic.selectMesh(${i})">
+                    <span>${m.name}</span>
+                    <span class="count">${m.visemes.length} visemes</span>
+                </div>
+            `).join('');
+        },
+        
+        selectMesh(index) {
+            selectedMesh = morphMeshes[index];
+            Diagnostic.log(`Selected mesh: ${selectedMesh.name}`, 'info');
+            Diagnostic.log(`Available visemes: ${selectedMesh.visemes.join(', ')}`, 'info');
+            Diagnostic.updateMeshList();
+        },
+        
+        // --------------------------------------------------------
+        // VISEME TESTING
+        // --------------------------------------------------------
+        
+        applyViseme(visemeName, intensity = 1.0) {
+            if (!selectedMesh) {
+                Diagnostic.log('No mesh selected', 'warn');
+                return false;
+            }
+            
+            const index = selectedMesh.dictionary[visemeName];
+            if (index === undefined) {
+                Diagnostic.log(`Viseme "${visemeName}" not found in ${selectedMesh.name}`, 'error');
+                Diagnostic.log(`Available: ${selectedMesh.visemes.join(', ')}`, 'info');
+                return false;
+            }
+            
+            // Reset all first
+            if (selectedMesh.influences) {
+                selectedMesh.influences.fill(0);
+            }
+            
+            // Apply target viseme
+            selectedMesh.influences[index] = intensity;
+            
+            Diagnostic.log(`Applied ${visemeName} (idx ${index}) = ${intensity.toFixed(2)}`, 'viseme');
+            
+            // Update button states
+            document.querySelectorAll('.viseme-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.viseme === visemeName && intensity > 0);
+            });
+            
+            return true;
+        },
+        
+        applyVisemeById(azureId, intensity = 1.0) {
+            const oculusViseme = AZURE_TO_OCULUS[azureId];
+            if (!oculusViseme) {
+                Diagnostic.log(`Unknown Azure viseme ID: ${azureId}`, 'warn');
+                return false;
+            }
+            return Diagnostic.applyViseme(oculusViseme, intensity);
+        },
+        
+        resetVisemes() {
+            if (!selectedMesh) return;
+            
+            if (selectedMesh.influences) {
+                selectedMesh.influences.fill(0);
+            }
+            
+            document.querySelectorAll('.viseme-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            Diagnostic.log('Reset all visemes to 0', 'info');
+        },
+        
+        runVisemeSequence() {
+            if (!selectedMesh) {
+                Diagnostic.log('No mesh selected for sequence test', 'warn');
+                return;
+            }
+            
+            const intensity = parseFloat(document.getElementById('viseme-intensity').value);
+            const sequence = ['viseme_sil', 'viseme_aa', 'viseme_E', 'viseme_O', 'viseme_PP', 'viseme_FF', 'viseme_sil'];
+            const display = document.getElementById('sequence-display');
+            
+            Diagnostic.log(`Running viseme sequence at intensity ${intensity}...`, 'info');
+            display.innerHTML = '';
+            
+            let index = 0;
+            const interval = setInterval(() => {
+                if (index >= sequence.length) {
+                    clearInterval(interval);
+                    Diagnostic.log('Sequence complete', 'success');
+                    return;
+                }
+                
+                const viseme = sequence[index];
+                const success = Diagnostic.applyViseme(viseme, intensity);
+                
+                const entry = document.createElement('span');
+                entry.style.color = success ? 'var(--gs-success)' : 'var(--gs-error)';
+                entry.textContent = `${viseme} `;
+                display.appendChild(entry);
+                
+                index++;
+            }, 400);
+        },
+        
+        // --------------------------------------------------------
+        // AZURE SPEECH TESTING
+        // --------------------------------------------------------
+        
+        checkAzureConfig() {
+            // Check for global CONFIG
+            if (typeof CONFIG !== 'undefined') {
+                Diagnostic.log('Found global CONFIG object', 'success');
+                if (CONFIG.AZURE_SPEECH_KEY) {
+                    document.getElementById('azure-key').placeholder = 'Using CONFIG.AZURE_SPEECH_KEY';
+                }
+                if (CONFIG.AZURE_SPEECH_REGION) {
+                    document.getElementById('azure-region').placeholder = `Using CONFIG (${CONFIG.AZURE_SPEECH_REGION})`;
+                }
+                Diagnostic.updateStatus('status-azure', 'CONFIG found', 'ok');
+                return true;
+            }
+            
+            Diagnostic.log('No global CONFIG found - enter credentials manually', 'warn');
+            Diagnostic.updateStatus('status-azure', 'Manual', 'warn');
+            return false;
+        },
+        
+        checkSDK() {
+            if (typeof SpeechSDK !== 'undefined') {
+                Diagnostic.log('Azure Speech SDK loaded', 'success');
+                Diagnostic.updateStatus('status-sdk', 'Ready', 'ok');
+                return true;
+            }
+            
+            Diagnostic.log('Azure Speech SDK not loaded!', 'error');
+            Diagnostic.updateStatus('status-sdk', 'Missing', 'error');
+            return false;
+        },
+        
+        async testAzureSpeech() {
+            if (!Diagnostic.checkSDK()) return;
+            
+            // Get credentials
+            let key = document.getElementById('azure-key').value.trim();
+            let region = document.getElementById('azure-region').value.trim();
+            
+            // Fallback to CONFIG
+            if (!key && typeof CONFIG !== 'undefined' && CONFIG.AZURE_SPEECH_KEY) {
+                key = CONFIG.AZURE_SPEECH_KEY;
+            }
+            if (!region && typeof CONFIG !== 'undefined' && CONFIG.AZURE_SPEECH_REGION) {
+                region = CONFIG.AZURE_SPEECH_REGION;
+            }
+            
+            if (!key || !region) {
+                Diagnostic.log('Missing Azure credentials', 'error');
+                return;
+            }
+            
+            const text = document.getElementById('test-text').value.trim();
+            if (!text) {
+                Diagnostic.log('No text to speak', 'warn');
+                return;
+            }
+            
+            Diagnostic.log(`Initiating Azure TTS: "${text}"`, 'info');
+            document.getElementById('azure-speak-btn').disabled = true;
+            
+            try {
+                const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
+                speechConfig.speechSynthesisVoiceName = 'en-US-JennyNeural';
+                
+                // Create player
+                Diagnostic.player = new SpeechSDK.SpeakerAudioDestination();
+                const audioConfig = SpeechSDK.AudioConfig.fromSpeakerOutput(Diagnostic.player);
+                
+                Diagnostic.synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
+                
+                // Track viseme events
+                let visemeCount = 0;
+                Diagnostic.visemeQueue = [];
+                
+                Diagnostic.synthesizer.visemeReceived = (s, e) => {
+                    visemeCount++;
+                    const offsetMs = e.audioOffset / 10000;
+                    
+                    Diagnostic.log(`🎤 Viseme #${visemeCount}: ID=${e.visemeId} @ ${offsetMs.toFixed(0)}ms → ${AZURE_TO_OCULUS[e.visemeId] || '?'}`, 'viseme');
+                    
+                    Diagnostic.visemeQueue.push({
+                        id: e.visemeId,
+                        offset: offsetMs,
+                        oculus: AZURE_TO_OCULUS[e.visemeId]
+                    });
+                    
+                    // Apply viseme immediately (for testing)
+                    if (selectedMesh) {
+                        Diagnostic.applyVisemeById(e.visemeId, 1.0);
+                    }
+                };
+                
+                Diagnostic.synthesizer.synthesisStarted = (s, e) => {
+                    Diagnostic.log('Synthesis started', 'info');
+                    Diagnostic.isPlaying = true;
+                };
+                
+                Diagnostic.synthesizer.synthesisCompleted = (s, e) => {
+                    Diagnostic.log(`Synthesis complete. ${visemeCount} viseme events received.`, 'success');
+                    Diagnostic.isPlaying = false;
+                    document.getElementById('azure-speak-btn').disabled = false;
+                    
+                    // Reset visemes after short delay
+                    setTimeout(() => {
+                        Diagnostic.resetVisemes();
+                    }, 500);
+                };
+                
+                Diagnostic.synthesizer.SynthesisCanceled = (s, e) => {
+                    Diagnostic.log(`Synthesis canceled: ${e.errorDetails}`, 'error');
+                    Diagnostic.isPlaying = false;
+                    document.getElementById('azure-speak-btn').disabled = false;
+                };
+                
+                // Build SSML with viseme request
+                const ssml = `
+                    <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"
+                           xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="en-US">
+                        <voice name="en-US-JennyNeural">
+                            <mstts:viseme type="redlips_front"/>
+                            ${text}
+                        </voice>
+                    </speak>
+                `.trim();
+                
+                Diagnostic.log('Sending SSML with viseme request...', 'info');
+                
+                Diagnostic.synthesizer.speakSsmlAsync(
+                    ssml,
+                    (result) => {
+                        if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+                            Diagnostic.log('Audio synthesis completed successfully', 'success');
+                        } else {
+                            Diagnostic.log(`Synthesis failed: ${result.errorDetails}`, 'error');
+                        }
+                    },
+                    (error) => {
+                        Diagnostic.log(`Synthesis error: ${error}`, 'error');
+                        document.getElementById('azure-speak-btn').disabled = false;
+                    }
+                );
+                
+            } catch (error) {
+                Diagnostic.log(`Error: ${error.message}`, 'error');
+                document.getElementById('azure-speak-btn').disabled = false;
+            }
+        },
+        
+        stopSpeech() {
+            if (Diagnostic.synthesizer) {
+                Diagnostic.synthesizer.close();
+                Diagnostic.synthesizer = null;
+            }
+            if (Diagnostic.player) {
+                Diagnostic.player.pause();
+                Diagnostic.player.close();
+                Diagnostic.player = null;
+            }
+            Diagnostic.isPlaying = false;
+            Diagnostic.resetVisemes();
+            document.getElementById('azure-speak-btn').disabled = false;
+            Diagnostic.log('Speech stopped', 'info');
+        },
+        
+        // --------------------------------------------------------
+        // FULL DIAGNOSTIC
+        // --------------------------------------------------------
+        
+        runFullCheck() {
+            Diagnostic.log('═══════════════════════════════════════', 'info');
+            Diagnostic.log('Running full diagnostic check...', 'info');
+            Diagnostic.log('═══════════════════════════════════════', 'info');
+            
+            // Check Three.js
+            if (typeof THREE !== 'undefined') {
+                Diagnostic.updateStatus('status-threejs', 'v' + THREE.REVISION, 'ok');
+            } else {
+                Diagnostic.updateStatus('status-threejs', 'Missing', 'error');
+            }
+            
+            // Check model
+            if (currentModel) {
+                Diagnostic.updateStatus('status-model', 'Loaded', 'ok');
+            } else {
+                Diagnostic.updateStatus('status-model', 'None', 'warn');
+            }
+            
+            // Check morph meshes
+            if (morphMeshes.length > 0) {
+                Diagnostic.updateStatus('status-morphmesh', morphMeshes.length.toString(), 'ok');
+                
+                const allVisemes = new Set();
+                morphMeshes.forEach(m => m.visemes.forEach(v => allVisemes.add(v)));
+                Diagnostic.updateStatus('status-visemes', allVisemes.size.toString(), allVisemes.size > 0 ? 'ok' : 'warn');
+                
+                // Log detailed info
+                morphMeshes.forEach(m => {
+                    Diagnostic.log(`Mesh "${m.name}":`, 'info');
+                    Diagnostic.log(`  - Total morph targets: ${m.allTargets.length}`, 'info');
+                    Diagnostic.log(`  - Viseme targets: ${m.visemes.length}`, 'info');
+                    Diagnostic.log(`  - Has influences array: ${!!m.influences}`, 'info');
+                    if (m.influences) {
+                        Diagnostic.log(`  - Influences length: ${m.influences.length}`, 'info');
+                    }
+                });
+            } else {
+                Diagnostic.updateStatus('status-morphmesh', '0', 'error');
+                Diagnostic.updateStatus('status-visemes', 'N/A', 'error');
+            }
+            
+            // Check Azure
+            Diagnostic.checkAzureConfig();
+            Diagnostic.checkSDK();
+            
+            // Update overall status
+            const statuses = ['status-threejs', 'status-model', 'status-morphmesh', 'status-visemes', 'status-azure', 'status-sdk']
+                .map(id => document.getElementById(id).className);
+            
+            const hasError = statuses.some(s => s.includes('error'));
+            const hasWarn = statuses.some(s => s.includes('warn'));
+            
+            const overall = document.getElementById('overall-status');
+            if (hasError) {
+                overall.className = 'status-error';
+                overall.title = 'Issues detected';
+            } else if (hasWarn) {
+                overall.className = 'status-warn';
+                overall.title = 'Warnings present';
+            } else {
+                overall.className = 'status-ok';
+                overall.title = 'All systems go';
+            }
+            
+            Diagnostic.log('Diagnostic check complete', 'success');
+        }
+    };
+    
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize Three.js
+        initThreeJS();
+        
+        // Generate viseme buttons
+        const btnContainer = document.getElementById('viseme-buttons');
+        OCULUS_VISEMES.forEach(v => {
+            const btn = document.createElement('button');
+            btn.className = 'viseme-btn';
+            btn.textContent = v.replace('viseme_', '');
+            btn.dataset.viseme = v;
+            btn.onclick = () => {
+                const intensity = parseFloat(document.getElementById('viseme-intensity').value);
+                Diagnostic.applyViseme(v, intensity);
+            };
+            btnContainer.appendChild(btn);
+        });
+        
+        // Intensity slider
+        document.getElementById('viseme-intensity').addEventListener('input', (e) => {
+            document.getElementById('intensity-value').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+        
+        // Run initial checks
+        setTimeout(() => {
+            Diagnostic.runFullCheck();
+        }, 500);
+    });
+    
+    // Expose to global scope for console access
+    window.Diagnostic = Diagnostic;
+    window.AZURE_TO_OCULUS = AZURE_TO_OCULUS;
+    window.OCULUS_VISEMES = OCULUS_VISEMES;
+    
+    // Helpful console message
+    console.log('%c🔬 Vestis Diagnostic Harness Loaded', 'font-size: 16px; font-weight: bold; color: #e94560;');
+    console.log('%cUseful commands:', 'font-weight: bold;');
+    console.log('  Diagnostic.applyViseme("viseme_aa", 1.0)  - Test a viseme');
+    console.log('  Diagnostic.applyVisemeById(21, 1.0)      - Test Azure viseme ID');
+    console.log('  Diagnostic.resetVisemes()                 - Reset all visemes');
+    console.log('  Diagnostic.runFullCheck()                 - Run diagnostics');
+    console.log('  morphMeshes                               - View loaded morph meshes');
+    console.log('  selectedMesh                              - View currently selected mesh');
+    </script>
+</body>
+</html>
