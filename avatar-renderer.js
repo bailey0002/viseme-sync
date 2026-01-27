@@ -33,7 +33,7 @@ class AvatarRenderer {
     init() {
         // Scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x1a1a2e);
+        this.scene.background = new THREE.Color(0x0a0a0a);
 
         // Camera - positioned to frame a head/upper body
         const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
@@ -173,12 +173,12 @@ class AvatarRenderer {
         const height = box.max.y - box.min.y;
         const centerY = height / 2;
 
+        // Rotate model to face camera (Avaturn models often face wrong direction)
+        this.model.rotation.y = Math.PI;
+        
         // Position camera to show full body, straight on
         this.camera.position.set(0, centerY, 2.5);
         this.controls.target.set(0, centerY, 0);
-        
-        // Make sure model faces camera (rotate model, not camera)
-        this.model.rotation.y = 0;
         
         this.camera.up.set(0, 1, 0);
         this.camera.lookAt(0, centerY, 0);

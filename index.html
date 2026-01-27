@@ -3,131 +3,651 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Avatar Lip-Sync with Azure TTS</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Vestis — Grey Stratum</title>
     <link rel="icon" href="data:,">
     
     <!-- Azure Speech SDK -->
     <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
     
-    <!-- Config (contains Azure keys - injected at deploy time) -->
-    <script src="config.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-card: rgba(255, 255, 255, 0.02);
+            --bg-card-hover: rgba(255, 255, 255, 0.04);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+            --text-primary: rgba(255, 255, 255, 0.9);
+            --text-secondary: rgba(255, 255, 255, 0.5);
+            --text-muted: rgba(255, 255, 255, 0.3);
+            --accent: rgba(255, 255, 255, 0.7);
+            --accent-glow: rgba(255, 255, 255, 0.1);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, var(--bg-primary), transparent);
+        }
+        
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 0.15em;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .logo:hover {
+            color: var(--text-primary);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            letter-spacing: 0.05em;
+            transition: color 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+        
+        /* Main Layout */
+        .container {
+            display: flex;
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+        
+        /* Avatar Viewport */
+        .avatar-section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: radial-gradient(ellipse at center, rgba(30, 30, 30, 0.5) 0%, transparent 70%);
+        }
+        
+        #avatar-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            z-index: 10;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border-color);
+            border-top-color: var(--text-secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            width: 400px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .protocol-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.2em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .protocol-title {
+            font-size: 1.5rem;
+            font-weight: 300;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .protocol-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+        
+        /* Status */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 2rem;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        
+        .status-dot.connected {
+            background: #4ade80;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+        
+        .status-dot.connecting {
+            background: #fbbf24;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        
+        .status-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+        
+        /* Sections */
+        .panel-section {
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .section-header {
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .section-header:hover {
+            background: var(--bg-card);
+        }
+        
+        .section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.1em;
+        }
+        
+        .section-toggle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+        }
+        
+        .panel-section.open .section-toggle {
+            transform: rotate(180deg);
+        }
+        
+        .section-content {
+            padding: 0 2rem 1.5rem;
+            display: none;
+        }
+        
+        .panel-section.open .section-content {
+            display: block;
+        }
+        
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            transition: border-color 0.2s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--text-secondary);
+        }
+        
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        /* Chat Section */
+        .chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .message {
+            max-width: 85%;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            align-self: flex-end;
+        }
+        
+        .message.assistant {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            align-self: flex-start;
+            color: var(--text-secondary);
+        }
+        
+        .message.system {
+            background: transparent;
+            border: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            align-self: center;
+            text-align: center;
+        }
+        
+        /* Input Area */
+        .input-area {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        #user-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            resize: none;
+            transition: border-color 0.2s ease;
+        }
+        
+        #user-input:focus {
+            outline: none;
+            border-color: var(--text-secondary);
+        }
+        
+        #user-input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .input-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .icon-btn {
+            width: 42px;
+            height: 42px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .icon-btn:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+        
+        .icon-btn.recording {
+            border-color: #4ade80;
+            color: #4ade80;
+            animation: pulse 1s infinite;
+        }
+        
+        /* Primary Button */
+        .primary-btn {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.5rem;
+        }
+        
+        .primary-btn:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+        
+        /* Responsive */
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .avatar-section {
+                height: 50vh;
+                min-height: 300px;
+            }
+            
+            .control-panel {
+                width: 100%;
+                flex: 1;
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+            }
+            
+            nav {
+                padding: 1rem 1.5rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+        }
+        
+        /* Voice Select Styling */
+        .form-group select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='rgba(255,255,255,0.3)' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            padding-right: 2.5rem;
+        }
+        
+        /* Range Slider */
+        .form-group input[type="range"] {
+            -webkit-appearance: none;
+            height: 4px;
+            background: var(--border-color);
+            border: none;
+            border-radius: 2px;
+            padding: 0;
+        }
+        
+        .form-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .form-group input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--text-primary);
+        }
+        
+        .range-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .range-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+    </style>
 </head>
 <body>
-    <div id="app-container">
-        <!-- 3D Avatar Viewport -->
-        <div id="avatar-viewport">
+    <!-- Navigation -->
+    <nav>
+        <a href="https://www.greystratum.com" class="logo">GREYSTRATUM</a>
+        <div class="nav-links">
+            <a href="https://www.greystratum.com/protocols/concordia.html">Concordia</a>
+            <a href="https://www.greystratum.com/protocols/cantara.html">Cantara</a>
+            <a href="https://www.greystratum.com/protocols/mandatum.html">Mandatum</a>
+            <a href="https://www.greystratum.com/portal.html">Signal</a>
+        </div>
+    </nav>
+    
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Avatar Viewport -->
+        <div class="avatar-section">
             <canvas id="avatar-canvas"></canvas>
-            <div id="loading-overlay">
+            <div class="loading-overlay" id="loading-overlay">
                 <div class="spinner"></div>
-                <p>Loading Avatar...</p>
+                <p class="loading-text">INITIALIZING VESTIS</p>
             </div>
         </div>
         
         <!-- Control Panel -->
-        <div id="control-panel">
-            <h1>🎭 3D Avatar Lip-Sync</h1>
-            <p class="subtitle">Azure TTS with 60fps BlendShapes</p>
-            
-            <!-- Connection Status -->
-            <div id="status-bar">
-                <span id="status-indicator" class="disconnected"></span>
-                <span id="status-text">Initializing...</span>
+        <div class="control-panel">
+            <!-- Header -->
+            <div class="panel-header">
+                <div class="protocol-label">PROTOCOL 005</div>
+                <h1 class="protocol-title">Vestis</h1>
+                <p class="protocol-subtitle">Presence made manifest. Voice given form.</p>
             </div>
             
-            <!-- Configuration Section (collapsed by default when config exists) -->
-            <details id="config-section">
-                <summary>🔧 Azure Configuration</summary>
-                <div class="config-content">
-                    <div class="config-group">
-                        <label>Speech API Key</label>
-                        <input type="password" id="speech-key" placeholder="Your Azure Speech key">
+            <!-- Status -->
+            <div class="status-bar">
+                <span class="status-dot" id="status-indicator"></span>
+                <span class="status-text" id="status-text">AWAITING CONNECTION</span>
+            </div>
+            
+            <!-- Configuration Section -->
+            <div class="panel-section" id="config-section">
+                <div class="section-header" onclick="toggleSection('config-section')">
+                    <span class="section-title">CONFIGURATION</span>
+                    <span class="section-toggle">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label>SPEECH KEY</label>
+                        <input type="password" id="speech-key" placeholder="Azure Speech API key">
                     </div>
-                    <div class="config-group">
-                        <label>Speech Region</label>
+                    <div class="form-group">
+                        <label>REGION</label>
                         <input type="text" id="speech-region" placeholder="e.g., eastus">
                     </div>
-                    <div class="config-group">
-                        <label>OpenAI Endpoint</label>
+                    <div class="form-group">
+                        <label>OPENAI ENDPOINT</label>
                         <input type="text" id="openai-endpoint" placeholder="https://your-resource.openai.azure.com">
                     </div>
-                    <div class="config-group">
-                        <label>OpenAI API Key</label>
-                        <input type="password" id="openai-key" placeholder="Your Azure OpenAI key">
+                    <div class="form-group">
+                        <label>OPENAI KEY</label>
+                        <input type="password" id="openai-key" placeholder="Azure OpenAI API key">
                     </div>
-                    <div class="config-group">
-                        <label>Deployment Name</label>
+                    <div class="form-group">
+                        <label>DEPLOYMENT</label>
                         <input type="text" id="openai-deployment" placeholder="e.g., gpt-4o">
                     </div>
-                    <button id="connect-btn" class="primary-btn">Reconnect</button>
-                    <p class="config-note">
-                        <em>Keys are pre-configured via deployment. Only use this to override.</em>
-                    </p>
+                    <button class="primary-btn" id="connect-btn">ESTABLISH CONNECTION</button>
                 </div>
-            </details>
+            </div>
             
             <!-- Voice Settings -->
-            <details id="voice-section">
-                <summary>🎤 Voice Settings</summary>
-                <div class="config-content">
-                    <div class="config-group">
-                        <label>Voice</label>
+            <div class="panel-section" id="voice-section">
+                <div class="section-header" onclick="toggleSection('voice-section')">
+                    <span class="section-title">VOICE PARAMETERS</span>
+                    <span class="section-toggle">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label>VOICE MODEL</label>
                         <select id="voice-select">
-                            <option value="en-US-AndrewMultilingualNeural">Andrew (Male)</option>
-                            <option value="en-US-AvaMultilingualNeural">Ava (Female)</option>
-                            <option value="en-US-BrianMultilingualNeural">Brian (Male)</option>
-                            <option value="en-US-EmmaMultilingualNeural">Emma (Female)</option>
-                            <option value="en-US-JennyNeural">Jenny (Female)</option>
-                            <option value="en-US-GuyNeural">Guy (Male)</option>
-                            <option value="en-US-AriaNeural">Aria (Female)</option>
-                            <option value="en-US-DavisNeural">Davis (Male)</option>
+                            <option value="en-US-AndrewMultilingualNeural">Andrew</option>
+                            <option value="en-US-AvaMultilingualNeural">Ava</option>
+                            <option value="en-US-BrianMultilingualNeural">Brian</option>
+                            <option value="en-US-EmmaMultilingualNeural">Emma</option>
+                            <option value="en-US-JennyNeural">Jenny</option>
+                            <option value="en-US-GuyNeural">Guy</option>
+                            <option value="en-US-AriaNeural">Aria</option>
+                            <option value="en-US-DavisNeural">Davis</option>
                         </select>
                     </div>
-                    <div class="config-group">
-                        <label>Speed: <span id="speed-value">1.0x</span></label>
+                    <div class="form-group">
+                        <div class="range-label">
+                            <label>RATE</label>
+                            <span class="range-value" id="speed-value">1.0×</span>
+                        </div>
                         <input type="range" id="speed-slider" min="0.5" max="1.5" step="0.1" value="1.0">
                     </div>
                 </div>
-            </details>
+            </div>
             
             <!-- Chat Interface -->
-            <div id="chat-section">
-                <div id="chat-messages"></div>
-                <div id="input-area">
-                    <textarea id="user-input" placeholder="Type a message or click mic to speak..." rows="2"></textarea>
-                    <div id="input-buttons">
-                        <button id="mic-btn" class="icon-btn" title="Voice Input">🎙️</button>
-                        <button id="send-btn" class="icon-btn" title="Send">📤</button>
+            <div class="chat-section">
+                <div class="chat-messages" id="chat-messages"></div>
+                <div class="input-area">
+                    <textarea id="user-input" placeholder="Speak or type..." rows="1"></textarea>
+                    <div class="input-buttons">
+                        <button class="icon-btn" id="mic-btn" title="Voice Input">◉</button>
+                        <button class="icon-btn" id="send-btn" title="Send">↑</button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Debug Panel -->
-            <details id="debug-section">
-                <summary>📊 Debug Info</summary>
-                <div id="debug-info">
-                    <div class="debug-row">
-                        <span>BlendShape Frames:</span>
-                        <span id="debug-frames">0</span>
-                    </div>
-                    <div class="debug-row">
-                        <span>Current Frame:</span>
-                        <span id="debug-current">-</span>
-                    </div>
-                    <div class="debug-row">
-                        <span>Active Shapes:</span>
-                        <span id="debug-active">-</span>
-                    </div>
-                    <div class="debug-row">
-                        <span>FPS:</span>
-                        <span id="debug-fps">-</span>
-                    </div>
-                </div>
-            </details>
         </div>
     </div>
     
-    <!-- Scripts as ES Modules -->
+    <!-- Scripts -->
     <script type="importmap">
     {
         "imports": {
@@ -135,6 +655,13 @@
             "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
         }
     }
+    </script>
+    
+    <script>
+        // Section toggle
+        function toggleSection(id) {
+            document.getElementById(id).classList.toggle('open');
+        }
     </script>
     
     <script type="module" src="blendshape-mapper.js"></script>
