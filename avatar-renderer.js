@@ -130,12 +130,31 @@ class AvatarRenderer {
                     
                     this.scene.add(this.model);
 
-                    // CRITICAL: Enable morph targets on all mesh materials
+                    // CRITICAL: Build morphTargetDictionary from userData.targetNames
+                    // Three.js GLTFLoader stores names in userData but doesn't populate the dictionary
                     this.model.traverse((node) => {
-                        if (node.isMesh && node.morphTargetInfluences) {
-                            node.material.morphTargets = true;
-                            node.material.morphNormals = true;
-                            node.material.needsUpdate = true;
+                        if (node.isMesh) {
+                            // Build morphTargetDictionary from userData.targetNames if available
+                            if (node.userData?.targetNames && Array.isArray(node.userData.targetNames)) {
+                                node.morphTargetDictionary = {};
+                                node.userData.targetNames.forEach((name, index) => {
+                                    node.morphTargetDictionary[name] = index;
+                                });
+                                
+                                // Log visemes found
+                                const visemes = Object.keys(node.morphTargetDictionary).filter(k => k.includes('viseme'));
+                                if (visemes.length > 0) {
+                                    console.log(`Built morphTargetDictionary for ${node.name}: ${visemes.length} visemes found`);
+                                    console.log('Visemes:', visemes);
+                                }
+                            }
+                            
+                            // Enable morph targets on materials
+                            if (node.morphTargetInfluences) {
+                                node.material.morphTargets = true;
+                                node.material.morphNormals = true;
+                                node.material.needsUpdate = true;
+                            }
                         }
                     });
 
