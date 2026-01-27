@@ -130,6 +130,15 @@ class AvatarRenderer {
                     
                     this.scene.add(this.model);
 
+                    // CRITICAL: Enable morph targets on all mesh materials
+                    this.model.traverse((node) => {
+                        if (node.isMesh && node.morphTargetInfluences) {
+                            node.material.morphTargets = true;
+                            node.material.morphNormals = true;
+                            node.material.needsUpdate = true;
+                        }
+                    });
+
                     // Setup animation mixer if there are animations
                     if (gltf.animations && gltf.animations.length > 0) {
                         this.mixer = new THREE.AnimationMixer(this.model);
@@ -139,10 +148,17 @@ class AvatarRenderer {
                         console.log('Playing animation:', gltf.animations[0].name);
                     }
 
-                    // Initialize blendshape mapper
-                    const success = window.BlendShapeMapper.initialize(this.model);
-                    if (!success) {
-                        console.warn('No blendshapes found in model');
+                    // Initialize viseme mapper (for Oculus visemes)
+                    if (window.VisemeMapper) {
+                        const success = window.VisemeMapper.initialize(this.model);
+                        if (!success) {
+                            console.warn('No visemes found in model');
+                        }
+                    }
+                    
+                    // Also initialize blendshape mapper as fallback
+                    if (window.BlendShapeMapper) {
+                        window.BlendShapeMapper.initialize(this.model);
                     }
 
                     // Adjust camera to focus on face

@@ -59,8 +59,8 @@ class App {
             return;
         }
 
-        // Initialize Azure services
-        this.azure = new AzureServices3D();
+        // Initialize Azure services (using Viseme-based lip sync)
+        this.azure = new AzureServicesViseme();
         this.setupAzureCallbacks();
 
         // Setup UI event listeners
