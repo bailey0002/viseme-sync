@@ -163,45 +163,28 @@ class AvatarRenderer {
     }
 
     /**
-     * Adjust camera to focus on the face area
+     * Adjust camera to show full body
      */
     focusOnFace() {
         if (!this.model) return;
 
-        // Find the head bone
-        let headBone = null;
-        this.model.traverse((node) => {
-            if (node.name === 'Head' || node.name === 'head') {
-                headBone = node;
-            }
-        });
+        // Get model bounds
+        const box = new THREE.Box3().setFromObject(this.model);
+        const height = box.max.y - box.min.y;
+        const centerY = height / 2;
 
-        let targetY;
+        // Position camera to show full body, straight on
+        this.camera.position.set(0, centerY, 2.5);
+        this.controls.target.set(0, centerY, 0);
         
-        if (headBone) {
-            // Get world position of head
-            const headPos = new THREE.Vector3();
-            headBone.getWorldPosition(headPos);
-            targetY = headPos.y;
-            console.log('Found head bone at:', headPos);
-        } else {
-            // Fallback: estimate head position from model height
-            const box = new THREE.Box3().setFromObject(this.model);
-            const height = box.max.y - box.min.y;
-            targetY = height * 0.85;
-            console.log('Estimated head height:', targetY);
-        }
-
-        // Position camera directly in front, facing straight on
-        this.camera.position.set(0, targetY, 0.65);
-        this.controls.target.set(0, targetY, 0);
+        // Make sure model faces camera (rotate model, not camera)
+        this.model.rotation.y = 0;
         
-        // Reset any rotation
         this.camera.up.set(0, 1, 0);
-        this.camera.lookAt(0, targetY, 0);
+        this.camera.lookAt(0, centerY, 0);
         
         this.controls.update();
-        console.log('Camera positioned at:', this.camera.position);
+        console.log('Camera positioned for full body view');
     }
 
     /**
