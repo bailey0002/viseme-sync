@@ -176,33 +176,32 @@ class AvatarRenderer {
             }
         });
 
+        let targetY;
+        
         if (headBone) {
             // Get world position of head
             const headPos = new THREE.Vector3();
             headBone.getWorldPosition(headPos);
-            
-            // Set camera target to head
-            this.controls.target.copy(headPos);
-            
-            // Position camera in front of face
-            this.camera.position.set(
-                headPos.x,
-                headPos.y,
-                headPos.z + 0.8
-            );
-            
-            this.controls.update();
-            console.log('Camera focused on head at:', headPos);
+            targetY = headPos.y;
+            console.log('Found head bone at:', headPos);
         } else {
             // Fallback: estimate head position from model height
             const box = new THREE.Box3().setFromObject(this.model);
             const height = box.max.y - box.min.y;
-            const headHeight = height * 0.9; // Head is roughly at 90% of height
-            
-            this.controls.target.set(0, headHeight, 0);
-            this.camera.position.set(0, headHeight, 0.8);
-            this.controls.update();
+            targetY = height * 0.85;
+            console.log('Estimated head height:', targetY);
         }
+
+        // Position camera directly in front, facing straight on
+        this.camera.position.set(0, targetY, 0.65);
+        this.controls.target.set(0, targetY, 0);
+        
+        // Reset any rotation
+        this.camera.up.set(0, 1, 0);
+        this.camera.lookAt(0, targetY, 0);
+        
+        this.controls.update();
+        console.log('Camera positioned at:', this.camera.position);
     }
 
     /**
