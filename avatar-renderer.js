@@ -839,24 +839,25 @@ class AvatarRenderer {
     }
 
     positionArms() {
+        // Arms draped naturally at sides
         if (this.bones.RightArm) {
             this.bones.RightArm.rotation.set(0, 0, 0);
-            this.bones.RightArm.rotation.x = 0.3;
-            this.bones.RightArm.rotation.z = 0.9;
+            this.bones.RightArm.rotation.x = 0.05;   // Minimal forward
+            this.bones.RightArm.rotation.z = 1.2;    // Down at side
         }
         if (this.bones.RightForeArm) {
             this.bones.RightForeArm.rotation.set(0, 0, 0);
-            this.bones.RightForeArm.rotation.z = 0.2;
+            this.bones.RightForeArm.rotation.z = 0.1;  // Slight natural bend
         }
         
         if (this.bones.LeftArm) {
             this.bones.LeftArm.rotation.set(0, 0, 0);
-            this.bones.LeftArm.rotation.x = 0.3;
-            this.bones.LeftArm.rotation.z = -0.9;
+            this.bones.LeftArm.rotation.x = 0.05;    // Minimal forward
+            this.bones.LeftArm.rotation.z = -1.2;    // Down at side
         }
         if (this.bones.LeftForeArm) {
             this.bones.LeftForeArm.rotation.set(0, 0, 0);
-            this.bones.LeftForeArm.rotation.z = -0.2;
+            this.bones.LeftForeArm.rotation.z = -0.1; // Slight natural bend
         }
         
         console.log('Arms positioned');
