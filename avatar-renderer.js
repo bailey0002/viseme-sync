@@ -841,24 +841,25 @@ class AvatarRenderer {
 
     positionArms() {
         // Arms draped naturally at sides
+        // T-pose arms point along X axis, so we rotate around X to bring them down
         if (this.bones.RightArm) {
             this.bones.RightArm.rotation.set(0, 0, 0);
-            this.bones.RightArm.rotation.x = 0.15;    // Slight forward
-            this.bones.RightArm.rotation.z = -1.0;    // Down at side
+            this.bones.RightArm.rotation.x = 1.0;     // Down from T-pose
+            this.bones.RightArm.rotation.z = 0.2;     // Slightly away from body
         }
         if (this.bones.RightForeArm) {
             this.bones.RightForeArm.rotation.set(0, 0, 0);
-            this.bones.RightForeArm.rotation.z = -0.15; // Slight natural bend
+            this.bones.RightForeArm.rotation.x = 0.1;  // Slight bend
         }
         
         if (this.bones.LeftArm) {
             this.bones.LeftArm.rotation.set(0, 0, 0);
-            this.bones.LeftArm.rotation.x = 0.15;     // Slight forward
-            this.bones.LeftArm.rotation.z = 1.0;      // Down at side
+            this.bones.LeftArm.rotation.x = 1.0;      // Down from T-pose
+            this.bones.LeftArm.rotation.z = -0.2;     // Slightly away from body
         }
         if (this.bones.LeftForeArm) {
             this.bones.LeftForeArm.rotation.set(0, 0, 0);
-            this.bones.LeftForeArm.rotation.z = 0.15;  // Slight natural bend
+            this.bones.LeftForeArm.rotation.x = 0.1;   // Slight bend
         }
         
         console.log('Arms positioned');
