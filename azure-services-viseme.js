@@ -3,6 +3,9 @@
  * 
  * Uses Azure Speech SDK with Viseme IDs (0-21) mapped to Oculus visemes.
  * This is more reliable than 3D BlendShapes for Avaturn T2 models.
+ * 
+ * Now supports Audio2Face mode where visemes are disabled and audio
+ * is routed to A2F for ARKit blendshape processing.
  */
 
 class AzureServicesViseme {
@@ -18,9 +21,10 @@ class AzureServicesViseme {
         this.isListening = false;
         this.isSpeaking = false;
         this.conversationHistory = [];
-        
-        // Viseme intensity (mouth expressiveness)
+
+        // Viseme control
         this.visemeIntensity = 1.0;
+        this.visemeEnabled = true;  // Can be disabled when A2F is active
 
         // Azure SDK objects
         this.speechConfig = null;
@@ -29,7 +33,7 @@ class AzureServicesViseme {
         this.player = null;
 
         // Viseme timing data
-        this.visemeQueue = [];      // Array of {visemeId, audioOffset}
+        this.visemeQueue = [];
         this.currentVisemeIndex = 0;
         this.playbackStartTime = null;
         this.animationFrameId = null;
@@ -58,22 +62,40 @@ class AzureServicesViseme {
     }
 
     /**
+     * Enable/disable viseme processing (disable when A2F is active)
+     */
+    setVisemeEnabled(enabled) {
+        this.visemeEnabled = enabled;
+        console.log('Viseme processing:', enabled ? 'enabled' : 'disabled (A2F mode)');
+        
+        if (!enabled) {
+            // Reset any active visemes
+            if (window.VisemeMapper) {
+                window.VisemeMapper.reset();
+            }
+        }
+    }
+
+    /**
      * Configure Azure services
      */
     configure(config) {
         Object.assign(this.config.speech, config.speech || {});
         Object.assign(this.config.openai, config.openai || {});
         Object.assign(this.config.voice, config.voice || {});
+
         if (config.systemPrompt) {
             this.config.systemPrompt = config.systemPrompt;
         }
 
         // Validate
         const { speech, openai } = this.config;
+
         if (!speech.key || !speech.region) {
             this.emit('error', { message: 'Missing Speech API key or region' });
             return false;
         }
+
         if (!openai.endpoint || !openai.key || !openai.deployment) {
             this.emit('error', { message: 'Missing OpenAI endpoint, key, or deployment' });
             return false;
@@ -136,7 +158,11 @@ class AzureServicesViseme {
             this.currentVisemeIndex = 0;
             this.isSpeaking = true;
             this.emit('speaking', true);
-            this.processVisemes();
+            
+            // Only process visemes if enabled (not in A2F mode)
+            if (this.visemeEnabled) {
+                this.processVisemes();
+            }
         };
 
         this.player.onAudioEnd = () => {
@@ -147,6 +173,22 @@ class AzureServicesViseme {
         // New synthesizer
         const outputConfig = SpeechSDK.AudioConfig.fromSpeakerOutput(this.player);
         this.synthesizer = new SpeechSDK.SpeechSynthesizer(this.speechConfig, outputConfig);
+        this.setupSynthesizerEvents();
+    }
+
+    /**
+     * Create synthesizer that returns audio data (for A2F mode)
+     * Returns audio blob instead of playing directly
+     */
+    createAudioOnlySynthesizer() {
+        if (this.synthesizer) {
+            try { this.synthesizer.close(); } catch (e) {}
+        }
+
+        // No audio output - we'll capture the result
+        this.synthesizer = new SpeechSDK.SpeechSynthesizer(this.speechConfig, null);
+        
+        // Still capture visemes for potential fallback
         this.setupSynthesizerEvents();
     }
 
@@ -187,17 +229,14 @@ class AzureServicesViseme {
         this.synthesizer.visemeReceived = (s, e) => {
             if (sessionId !== this.currentSynthesisId) return;
 
-            // e.visemeId is the viseme (0-21)
-            // e.audioOffset is timing in 100-nanosecond units
             const visemeId = e.visemeId;
-            const audioOffsetMs = e.audioOffset / 10000; // Convert to milliseconds
+            const audioOffsetMs = e.audioOffset / 10000;
 
             this.visemeQueue.push({
                 visemeId: visemeId,
                 audioOffset: audioOffsetMs
             });
 
-            // Debug: log first few visemes
             if (this.visemeQueue.length <= 5) {
                 console.log(`Viseme received: ID=${visemeId}, offset=${audioOffsetMs.toFixed(0)}ms`);
             }
@@ -221,36 +260,34 @@ class AzureServicesViseme {
      * Process visemes in sync with audio
      */
     processVisemes() {
-        if (!this.isSpeaking || !this.playbackStartTime) {
+        if (!this.isSpeaking || !this.playbackStartTime || !this.visemeEnabled) {
             return;
         }
 
         const elapsed = performance.now() - this.playbackStartTime;
-        
-        // Find visemes that should be applied now
+
         while (this.currentVisemeIndex < this.visemeQueue.length) {
             const viseme = this.visemeQueue[this.currentVisemeIndex];
-            
+
             if (viseme.audioOffset <= elapsed) {
                 // Apply this viseme with smooth blending and intensity
-                window.VisemeMapper.blendToViseme(viseme.visemeId, 0.4, this.visemeIntensity);
-                
-                // Emit for debug display
+                if (window.VisemeMapper) {
+                    window.VisemeMapper.blendToViseme(viseme.visemeId, 0.4, this.visemeIntensity);
+                }
+
                 this.emit('viseme', {
                     visemeId: viseme.visemeId,
                     index: this.currentVisemeIndex,
                     total: this.visemeQueue.length,
                     elapsed: elapsed.toFixed(0)
                 });
-                
+
                 this.currentVisemeIndex++;
             } else {
-                // Haven't reached this viseme's time yet
                 break;
             }
         }
 
-        // Continue animation loop while speaking
         if (this.isSpeaking) {
             this.animationFrameId = requestAnimationFrame(() => this.processVisemes());
         }
@@ -268,24 +305,32 @@ class AzureServicesViseme {
         this.isSpeaking = false;
         this.playbackStartTime = null;
 
-        // Smoothly return to neutral
-        this.smoothResetToNeutral();
+        // Only reset visemes if we were controlling them
+        if (this.visemeEnabled) {
+            this.smoothResetToNeutral();
+        } else {
+            this.emit('speaking', false);
+        }
     }
 
     /**
      * Smoothly reset visemes to neutral over 300ms
      */
     smoothResetToNeutral() {
+        if (!window.VisemeMapper) {
+            this.emit('speaking', false);
+            return;
+        }
+
         const duration = 300;
         const startTime = performance.now();
-        
+
         const animate = () => {
             const elapsed = performance.now() - startTime;
             const t = Math.min(elapsed / duration, 1);
-            
-            // Blend toward neutral
+
             window.VisemeMapper.blendToNeutral(0.15);
-            
+
             if (t < 1) {
                 requestAnimationFrame(animate);
             } else {
@@ -293,7 +338,7 @@ class AzureServicesViseme {
                 this.emit('speaking', false);
             }
         };
-        
+
         requestAnimationFrame(animate);
     }
 
@@ -302,6 +347,7 @@ class AzureServicesViseme {
      */
     async startListening() {
         if (!this.isConfigured || this.isListening) return false;
+
         try {
             await this.recognizer.startContinuousRecognitionAsync();
             return true;
@@ -316,6 +362,7 @@ class AzureServicesViseme {
      */
     async stopListening() {
         if (!this.isListening) return;
+
         try {
             await this.recognizer.stopContinuousRecognitionAsync();
         } catch (error) {
@@ -338,10 +385,12 @@ class AzureServicesViseme {
         try {
             const response = await this.callOpenAI();
             this.conversationHistory.push({ role: 'assistant', content: response });
+
             this.emit('response', response);
             this.emit('thinking', false);
 
             await this.speak(response);
+
             return response;
         } catch (error) {
             this.emit('thinking', false);
@@ -387,6 +436,7 @@ class AzureServicesViseme {
 
     /**
      * Speak text with Viseme-based lip sync
+     * In A2F mode, emits audioReady event for external processing
      */
     async speak(text) {
         if (!this.speechConfig) {
@@ -394,9 +444,8 @@ class AzureServicesViseme {
             return;
         }
 
-        // Increment session to invalidate old callbacks
         this.currentSynthesisId++;
-        console.log(`Starting viseme synthesis session #${this.currentSynthesisId}`);
+        console.log(`Starting synthesis session #${this.currentSynthesisId}, visemeEnabled: ${this.visemeEnabled}`);
 
         // Clear previous data
         this.visemeQueue = [];
@@ -408,12 +457,15 @@ class AzureServicesViseme {
             this.animationFrameId = null;
         }
 
-        // Create fresh synthesizer
-        this.createSynthesizer();
-
-        // Build SSML with viseme support
         const ssml = this.buildSSML(text);
-        console.log('Starting viseme synthesis...');
+
+        // If visemes are disabled (A2F mode), synthesize to buffer and emit audioReady
+        if (!this.visemeEnabled) {
+            return this.speakWithAudioCapture(ssml);
+        }
+
+        // Normal viseme mode - play directly
+        this.createSynthesizer();
 
         return new Promise((resolve, reject) => {
             this.synthesizer.speakSsmlAsync(
@@ -436,13 +488,71 @@ class AzureServicesViseme {
     }
 
     /**
-     * Build SSML with Viseme ID output (not FacialExpression)
+     * Synthesize to audio buffer and emit for A2F processing
+     */
+    async speakWithAudioCapture(ssml) {
+        console.log('A2F mode: Synthesizing audio for external processing...');
+
+        // Create synthesizer without audio output
+        this.createAudioOnlySynthesizer();
+
+        return new Promise((resolve, reject) => {
+            this.synthesizer.speakSsmlAsync(
+                ssml,
+                (result) => {
+                    if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+                        console.log('Audio synthesis completed, bytes:', result.audioData.byteLength);
+
+                        // Create audio blob from result
+                        const audioBlob = new Blob([result.audioData], { type: 'audio/wav' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        const audioElement = new Audio(audioUrl);
+
+                        // Mark as speaking
+                        this.isSpeaking = true;
+                        this.emit('speaking', true);
+
+                        // Handle audio end
+                        audioElement.onended = () => {
+                            URL.revokeObjectURL(audioUrl);
+                            this.isSpeaking = false;
+                            this.emit('speaking', false);
+                        };
+
+                        // Emit audioReady event for A2F client to intercept
+                        this.emit('audioReady', {
+                            audioBlob: audioBlob,
+                            audioElement: audioElement,
+                            visemeQueue: this.visemeQueue  // Fallback data
+                        });
+
+                        // Start playing (A2F client will sync animation)
+                        audioElement.play().catch(err => {
+                            console.error('Audio playback error:', err);
+                            this.isSpeaking = false;
+                            this.emit('speaking', false);
+                        });
+
+                        resolve(result);
+                    } else {
+                        console.log('Audio synthesis failed:', result.reason);
+                        reject(new Error('Speech synthesis failed'));
+                    }
+                },
+                (error) => {
+                    console.error('Audio synthesis error:', error);
+                    reject(error);
+                }
+            );
+        });
+    }
+
+    /**
+     * Build SSML with Viseme ID output
      */
     buildSSML(text) {
         const { name, rate } = this.config.voice;
-        
-        // Convert rate (0.5-1.5) to relative percentage
-        // rate=1.0 -> "+0%", rate=0.5 -> "-50%", rate=1.5 -> "+50%"
+
         const relativePercent = Math.round((rate - 1.0) * 100);
         const rateString = relativePercent >= 0 ? `+${relativePercent}%` : `${relativePercent}%`;
 
@@ -451,10 +561,10 @@ class AzureServicesViseme {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
 
-        console.log(`Building SSML: voice=${name}, rate=${rateString} (slider=${rate})`);
+        console.log(`Building SSML: voice=${name}, rate=${rateString}`);
 
-        // Use redlips_front for Viseme IDs (0-21)
-        return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="en-US">
+        return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"
+                xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="en-US">
             <voice name="${name}">
                 <mstts:viseme type="redlips_front"/>
                 <prosody rate="${rateString}">${escaped}</prosody>
@@ -468,6 +578,7 @@ class AzureServicesViseme {
     updateVoiceSettings(voiceName, rate) {
         this.config.voice.name = voiceName;
         this.config.voice.rate = rate;
+
         if (this.speechConfig) {
             this.speechConfig.speechSynthesisVoiceName = voiceName;
         }
@@ -475,7 +586,6 @@ class AzureServicesViseme {
 
     /**
      * Set viseme intensity (mouth expressiveness)
-     * @param {number} intensity - 0.3 to 1.5 (1.0 = normal)
      */
     setVisemeIntensity(intensity) {
         this.visemeIntensity = Math.max(0.3, Math.min(1.5, intensity));
@@ -497,7 +607,8 @@ class AzureServicesViseme {
             totalVisemes: this.visemeQueue.length,
             currentViseme: this.currentVisemeIndex,
             isSpeaking: this.isSpeaking,
-            isListening: this.isListening
+            isListening: this.isListening,
+            visemeEnabled: this.visemeEnabled
         };
     }
 }

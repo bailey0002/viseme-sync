@@ -1,19 +1,22 @@
 /**
  * Main Application
  * Connects UI, Azure services, and 3D avatar rendering
- * Auto-connects if config.js has valid credentials
+ * Now supports both Azure Visemes AND Audio2Face for lip-sync
  */
 
 // Wait for other modules to load
 const { AvatarRenderer } = window;
-const { AzureServices3D } = window;
-const { BlendShapeMapper } = window;
 
 class App {
     constructor() {
         this.renderer = null;
         this.azure = null;
+        this.a2fClient = null;
         this.isRecording = false;
+        
+        // Lip-sync mode: 'viseme' (Azure) or 'a2f' (Audio2Face)
+        this.lipSyncMode = 'viseme';
+        this.a2fServerUrl = 'http://localhost:8000';  // Default for local testing
 
         // DOM elements
         this.elements = {
@@ -21,7 +24,7 @@ class App {
             loadingOverlay: document.getElementById('loading-overlay'),
             statusIndicator: document.getElementById('status-indicator'),
             statusText: document.getElementById('status-text'),
-            configSection: document.getElementById('config-section'),
+            configSection: document.getElementById('config-panel'),
             connectBtn: document.getElementById('connect-btn'),
             speechKey: document.getElementById('speech-key'),
             speechRegion: document.getElementById('speech-region'),
@@ -40,7 +43,11 @@ class App {
             debugFrames: document.getElementById('debug-frames'),
             debugCurrent: document.getElementById('debug-current'),
             debugActive: document.getElementById('debug-active'),
-            debugFps: document.getElementById('debug-fps')
+            debugFps: document.getElementById('debug-fps'),
+            // New A2F elements (will be created if not present)
+            lipSyncToggle: document.getElementById('lipsync-toggle'),
+            a2fStatus: document.getElementById('a2f-status'),
+            a2fServerInput: document.getElementById('a2f-server-url')
         };
 
         this.init();
@@ -61,9 +68,12 @@ class App {
             return;
         }
 
-        // Initialize Azure services (using Viseme-based lip sync)
+        // Initialize Azure services (Viseme-based lip sync)
         this.azure = new AzureServicesViseme();
         this.setupAzureCallbacks();
+
+        // Initialize Audio2Face client
+        await this.initA2FClient();
 
         // Setup UI event listeners
         this.setupEventListeners();
@@ -72,13 +82,119 @@ class App {
         if (this.hasValidConfig()) {
             this.autoConnect();
         } else {
-            // Show config section if no valid config
             this.elements.configSection.setAttribute('open', '');
             this.addSystemMessage('Please configure your Azure credentials to get started.');
         }
 
         // Start debug update loop
         this.updateDebugInfo();
+    }
+
+    /**
+     * Initialize Audio2Face client and check server connection
+     */
+    async initA2FClient() {
+        // Check if Audio2FaceClient is available
+        if (typeof Audio2FaceClient === 'undefined') {
+            console.warn('Audio2FaceClient not loaded - A2F features disabled');
+            return;
+        }
+
+        this.a2fClient = new Audio2FaceClient();
+        
+        // Load saved server URL from localStorage
+        const savedUrl = localStorage.getItem('a2f_server_url');
+        if (savedUrl) {
+            this.a2fServerUrl = savedUrl;
+        }
+
+        // Configure client
+        this.a2fClient.configure({
+            serverUrl: this.a2fServerUrl,
+            intensity: 1.0,
+            smoothing: 0.3,
+            useWebSocket: true
+        });
+
+        // Initialize with Three.js scene
+        if (this.renderer && this.renderer.scene) {
+            const meshCount = this.a2fClient.initializeWithScene(this.renderer.scene);
+            console.log(`A2F Client initialized with ${meshCount} meshes`);
+        }
+
+        // Set up A2F event callbacks
+        this.a2fClient.on('processing', (data) => {
+            console.log('A2F processing:', data);
+        });
+
+        this.a2fClient.on('frame', (data) => {
+            // Update debug display
+            if (this.elements.debugCurrent) {
+                this.elements.debugCurrent.textContent = 
+                    `A2F: ${data.frameIndex} (${data.activeShapes} shapes)`;
+            }
+        });
+
+        this.a2fClient.on('error', (data) => {
+            console.error('A2F error:', data.message);
+            this.addSystemMessage(`⚠️ A2F Error: ${data.message}`);
+            // Fall back to viseme mode
+            this.setLipSyncMode('viseme');
+        });
+
+        // Check server connection
+        await this.checkA2FConnection();
+    }
+
+    /**
+     * Check if A2F server is reachable
+     */
+    async checkA2FConnection() {
+        if (!this.a2fClient) return false;
+
+        const status = await this.a2fClient.checkConnection();
+        
+        if (status.connected) {
+            console.log('✓ A2F server connected:', status);
+            this.updateA2FStatusUI(true, status.mode);
+            return true;
+        } else {
+            console.log('✗ A2F server not available:', status.error);
+            this.updateA2FStatusUI(false, status.error);
+            return false;
+        }
+    }
+
+    /**
+     * Update A2F status in UI
+     */
+    updateA2FStatusUI(connected, info) {
+        if (this.elements.a2fStatus) {
+            if (connected) {
+                this.elements.a2fStatus.textContent = `✓ Connected (${info})`;
+                this.elements.a2fStatus.className = 'a2f-status connected';
+            } else {
+                this.elements.a2fStatus.textContent = `✗ ${info || 'Disconnected'}`;
+                this.elements.a2fStatus.className = 'a2f-status disconnected';
+            }
+        }
+    }
+
+    /**
+     * Set lip-sync mode (viseme or a2f)
+     */
+    setLipSyncMode(mode) {
+        this.lipSyncMode = mode;
+        console.log(`Lip-sync mode: ${mode}`);
+        
+        if (this.elements.lipSyncToggle) {
+            this.elements.lipSyncToggle.value = mode;
+        }
+
+        // Update Azure service to know whether to apply visemes
+        if (this.azure) {
+            this.azure.setVisemeEnabled(mode === 'viseme');
+        }
     }
 
     /**
@@ -91,18 +207,17 @@ class App {
         }
 
         const { speech, openai } = CONFIG;
-        
-        // Check that values exist and aren't placeholders
+
         const hasValidSpeech = speech?.key && 
-                               speech?.region && 
-                               !speech.key.includes('YOUR_') &&
-                               !speech.key.includes('PLACEHOLDER');
-        
+            speech?.region && 
+            !speech.key.includes('YOUR_') && 
+            !speech.key.includes('PLACEHOLDER');
+
         const hasValidOpenAI = openai?.endpoint && 
-                               openai?.key && 
-                               openai?.deployment &&
-                               !openai.key.includes('YOUR_') &&
-                               !openai.key.includes('PLACEHOLDER');
+            openai?.key && 
+            openai?.deployment && 
+            !openai.key.includes('YOUR_') && 
+            !openai.key.includes('PLACEHOLDER');
 
         console.log('Config validation:', { hasValidSpeech, hasValidOpenAI });
         return hasValidSpeech && hasValidOpenAI;
@@ -129,7 +244,8 @@ class App {
                 name: 'en-US-AndrewMultilingualNeural',
                 rate: 1.0
             },
-            systemPrompt: CONFIG.systemPrompt || 'You are a friendly assistant. Keep responses brief and conversational.'
+            systemPrompt: CONFIG.systemPrompt || 
+                'You are a friendly assistant. Keep responses brief and conversational.'
         };
 
         // Apply voice settings to UI
@@ -145,9 +261,13 @@ class App {
 
         if (success) {
             this.addSystemMessage('✓ Connected! You can now chat with the avatar.');
-            // Keep config section closed since we're connected
+            
+            // Check A2F and suggest if available
+            const a2fAvailable = await this.checkA2FConnection();
+            if (a2fAvailable) {
+                this.addSystemMessage('💡 Audio2Face server detected. Use the toggle to enable enhanced lip-sync.');
+            }
         } else {
-            // Open config section so user can fix
             this.elements.configSection.setAttribute('open', '');
             this.addSystemMessage('Connection failed. Please check your credentials.');
         }
@@ -177,7 +297,6 @@ class App {
 
         this.azure.on('transcript', (data) => {
             if (data.isFinal && data.text.trim()) {
-                // Remove "Listening..." message
                 this.removeSystemMessage('🎤 Listening...');
                 this.addMessage('user', data.text);
                 this.azure.stopListening();
@@ -196,9 +315,24 @@ class App {
             this.addMessage('assistant', text);
         });
 
+        // Hook into audio synthesis for A2F mode
+        this.azure.on('audioReady', async (data) => {
+            if (this.lipSyncMode === 'a2f' && this.a2fClient) {
+                console.log('Routing audio through A2F...');
+                try {
+                    await this.a2fClient.processAndAnimate(data.audioBlob, data.audioElement);
+                } catch (error) {
+                    console.error('A2F processing failed:', error);
+                    // Audio will still play, just without A2F animation
+                }
+            }
+        });
+
         this.azure.on('blendshapeFrame', (data) => {
-            this.elements.debugCurrent.textContent = 
-                `${data.frameIndex}/${data.totalFrames} (${data.elapsed}ms)`;
+            if (this.lipSyncMode === 'viseme') {
+                this.elements.debugCurrent.textContent = 
+                    `${data.frameIndex}/${data.totalFrames} (${data.elapsed}ms)`;
+            }
         });
     }
 
@@ -223,13 +357,54 @@ class App {
             );
         });
 
-        // Intensity slider - controls mouth movement expressiveness
+        // Intensity slider
         if (this.elements.intensitySlider) {
             this.elements.intensitySlider.addEventListener('input', () => {
                 const intensity = parseFloat(this.elements.intensitySlider.value);
                 this.elements.intensityValue.textContent = Math.round(intensity * 100) + '%';
+                
                 if (this.azure) {
                     this.azure.setVisemeIntensity(intensity);
+                }
+                if (this.a2fClient) {
+                    this.a2fClient.setIntensity(intensity);
+                }
+            });
+        }
+
+        // Lip-sync mode toggle
+        if (this.elements.lipSyncToggle) {
+            this.elements.lipSyncToggle.addEventListener('change', async (e) => {
+                const mode = e.target.value;
+                
+                if (mode === 'a2f') {
+                    // Check A2F connection first
+                    const connected = await this.checkA2FConnection();
+                    if (!connected) {
+                        this.addSystemMessage('⚠️ A2F server not available. Using Azure visemes.');
+                        e.target.value = 'viseme';
+                        return;
+                    }
+                }
+                
+                this.setLipSyncMode(mode);
+                this.addSystemMessage(`Lip-sync mode: ${mode === 'a2f' ? 'Audio2Face (52 ARKit shapes)' : 'Azure Visemes (15 Oculus shapes)'}`);
+            });
+        }
+
+        // A2F server URL input
+        if (this.elements.a2fServerInput) {
+            this.elements.a2fServerInput.value = this.a2fServerUrl;
+            this.elements.a2fServerInput.addEventListener('change', async (e) => {
+                const url = e.target.value.trim();
+                if (url) {
+                    this.a2fServerUrl = url;
+                    localStorage.setItem('a2f_server_url', url);
+                    
+                    if (this.a2fClient) {
+                        this.a2fClient.configure({ serverUrl: url });
+                        await this.checkA2FConnection();
+                    }
                 }
             });
         }
@@ -304,6 +479,7 @@ class App {
 
         this.elements.userInput.value = '';
         this.addMessage('user', text);
+
         await this.azure.processMessage(text);
     }
 
@@ -334,7 +510,7 @@ class App {
         const msg = document.createElement('div');
         msg.className = 'message system';
         msg.textContent = text;
-        msg.dataset.text = text; // For finding and removing
+        msg.dataset.text = text;
         this.elements.chatMessages.appendChild(msg);
         this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
     }
@@ -360,11 +536,19 @@ class App {
                 if (this.elements.debugFrames) {
                     this.elements.debugFrames.textContent = state.totalFrames;
                 }
-                
                 if (typeof BlendShapeMapper !== 'undefined' && this.elements.debugActive) {
                     const stats = BlendShapeMapper.getStats();
                     this.elements.debugActive.textContent = 
                         `${stats.activeCount} (max: ${stats.maxName} @ ${stats.maxValue})`;
+                }
+            }
+
+            // A2F debug info
+            if (this.a2fClient && this.lipSyncMode === 'a2f') {
+                const a2fState = this.a2fClient.getDebugState();
+                if (this.elements.debugFrames) {
+                    this.elements.debugFrames.textContent = 
+                        `A2F: ${a2fState.bufferedFrames} buffered`;
                 }
             }
 

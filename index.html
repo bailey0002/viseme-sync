@@ -12,11 +12,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
         
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         :root {
             --bg-primary: #0a0a0a;
@@ -30,6 +26,9 @@
             --text-muted: rgba(255, 255, 255, 0.3);
             --accent: rgba(255, 255, 255, 0.7);
             --accent-glow: rgba(255, 255, 255, 0.1);
+            --success: #4ade80;
+            --error: #f87171;
+            --info: #60a5fa;
         }
         
         body {
@@ -41,12 +40,10 @@
             overflow-x: hidden;
         }
         
-        /* Navigation - minimal */
+        /* Navigation */
         nav {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             z-index: 1000;
             padding: 1rem 1.5rem;
             display: flex;
@@ -65,9 +62,7 @@
             transition: color 0.3s ease;
         }
         
-        .logo:hover {
-            color: var(--text-secondary);
-        }
+        .logo:hover { color: var(--text-secondary); }
         
         .nav-links {
             display: flex;
@@ -83,15 +78,13 @@
             transition: color 0.2s ease;
         }
         
-        .nav-links a:hover {
-            color: var(--text-secondary);
-        }
+        .nav-links a:hover { color: var(--text-secondary); }
         
         @media (max-width: 600px) {
             .nav-links { display: none; }
         }
         
-        /* Main Layout - Centered Column */
+        /* Main Layout */
         .main-container {
             display: flex;
             flex-direction: column;
@@ -127,10 +120,7 @@
         
         .loading-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: var(--bg-primary);
             display: flex;
             flex-direction: column;
@@ -155,9 +145,7 @@
             animation: spin 1s linear infinite;
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
         .loading-text {
             font-family: 'JetBrains Mono', monospace;
@@ -166,14 +154,14 @@
             letter-spacing: 0.1em;
         }
         
-        /* Controls Container - Below Avatar */
+        /* Controls Container */
         .controls-container {
             width: 100%;
             max-width: 500px;
             margin-top: 1rem;
         }
         
-        /* Chat Input - Primary */
+        /* Chat Input */
         .chat-input-container {
             display: flex;
             gap: 0.5rem;
@@ -247,9 +235,9 @@
             background: var(--text-muted);
         }
         
-        .status-dot.connected { background: #4ade80; }
-        .status-dot.speaking { background: #60a5fa; animation: pulse 1s infinite; }
-        .status-dot.error { background: #f87171; }
+        .status-dot.connected { background: var(--success); }
+        .status-dot.speaking { background: var(--info); animation: pulse 1s infinite; }
+        .status-dot.error { background: var(--error); }
         
         .status-text {
             font-family: 'JetBrains Mono', monospace;
@@ -258,7 +246,7 @@
             letter-spacing: 0.05em;
         }
         
-        /* Collapsible Panels */
+        /* Panels */
         .panel-group {
             margin-top: 1rem;
             display: flex;
@@ -282,9 +270,7 @@
             transition: background 0.2s ease;
         }
         
-        .panel-header:hover {
-            background: var(--bg-card-hover);
-        }
+        .panel-header:hover { background: var(--bg-card-hover); }
         
         .panel-title {
             font-family: 'JetBrains Mono', monospace;
@@ -299,9 +285,7 @@
             transition: transform 0.2s ease;
         }
         
-        .panel.open .panel-toggle {
-            transform: rotate(180deg);
-        }
+        .panel.open .panel-toggle { transform: rotate(180deg); }
         
         .panel-content {
             max-height: 0;
@@ -309,9 +293,7 @@
             transition: max-height 0.3s ease;
         }
         
-        .panel.open .panel-content {
-            max-height: 500px;
-        }
+        .panel.open .panel-content { max-height: 600px; }
         
         .panel-inner {
             padding: 0.75rem 1rem;
@@ -323,9 +305,7 @@
             margin-bottom: 0.75rem;
         }
         
-        .form-row:last-child {
-            margin-bottom: 0;
-        }
+        .form-row:last-child { margin-bottom: 0; }
         
         .form-label {
             display: flex;
@@ -426,8 +406,58 @@
             border-bottom: 1px solid var(--border-color);
         }
         
-        .section-label:first-child {
-            margin-top: 0;
+        .section-label:first-child { margin-top: 0; }
+        
+        /* A2F Status Indicator */
+        .a2f-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            margin-top: 0.5rem;
+        }
+        
+        .a2f-status.connected {
+            background: rgba(74, 222, 128, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+        
+        .a2f-status.disconnected {
+            background: rgba(248, 113, 113, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+        
+        /* Toggle Switch */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+        }
+        
+        .toggle-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+        
+        .toggle-select {
+            padding: 0.3rem 0.5rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            cursor: pointer;
+        }
+        
+        .toggle-select:focus {
+            border-color: var(--text-secondary);
+            outline: none;
         }
         
         /* Chat Messages */
@@ -442,9 +472,7 @@
             display: none;
         }
         
-        .chat-messages.has-messages {
-            display: block;
-        }
+        .chat-messages.has-messages { display: block; }
         
         .chat-message {
             padding: 0.5rem;
@@ -453,33 +481,15 @@
             font-size: 0.8rem;
         }
         
-        .chat-message:last-child {
-            margin-bottom: 0;
-        }
-        
-        .chat-message.user {
-            background: var(--bg-card);
-            color: var(--text-secondary);
-        }
-        
-        .chat-message.assistant {
-            background: transparent;
-            color: var(--text-primary);
-        }
+        .chat-message:last-child { margin-bottom: 0; }
+        .chat-message.user { background: var(--bg-card); color: var(--text-secondary); }
+        .chat-message.assistant { background: transparent; color: var(--text-primary); }
+        .chat-message.system { color: var(--text-muted); font-size: 0.75rem; }
         
         /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 2px;
-        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
     </style>
 </head>
 <body>
@@ -492,7 +502,7 @@
             <a href="https://www.greystratum.com/protocols/mandatum.html">Mandatum</a>
         </div>
     </nav>
-    
+
     <!-- Main Container -->
     <div class="main-container">
         <!-- Avatar -->
@@ -503,7 +513,7 @@
                 <p class="loading-text">INITIALIZING VESTIS</p>
             </div>
         </div>
-        
+
         <!-- Controls Below Avatar -->
         <div class="controls-container">
             <!-- Chat Input -->
@@ -512,18 +522,47 @@
                 <button class="input-btn" id="mic-btn" title="Voice Input">◉</button>
                 <button class="input-btn" id="send-btn" title="Send">↑</button>
             </div>
-            
+
             <!-- Status -->
             <div class="status-bar">
                 <span class="status-dot" id="status-indicator"></span>
                 <span class="status-text" id="status-text">AWAITING CONNECTION</span>
             </div>
-            
+
             <!-- Chat History -->
             <div class="chat-messages" id="chat-messages"></div>
-            
+
             <!-- Collapsible Panels -->
             <div class="panel-group">
+                
+                <!-- Audio2Face Settings (NEW) -->
+                <div class="panel" id="a2f-panel">
+                    <div class="panel-header" onclick="togglePanel('a2f-panel')">
+                        <span class="panel-title">LIP-SYNC ENGINE</span>
+                        <span class="panel-toggle">▼</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="panel-inner">
+                            <div class="toggle-row">
+                                <span class="toggle-label">ENGINE</span>
+                                <select class="toggle-select" id="lipsync-toggle">
+                                    <option value="viseme">Azure Visemes (15 shapes)</option>
+                                    <option value="a2f">Audio2Face (52 ARKit)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="section-label">A2F SERVER</div>
+                            <div class="form-row">
+                                <input type="text" id="a2f-server-url" placeholder="http://localhost:8000" value="http://localhost:8000">
+                            </div>
+                            <div class="form-row">
+                                <button class="btn btn-small" id="a2f-test-btn">TEST CONNECTION</button>
+                            </div>
+                            <div id="a2f-status" class="a2f-status disconnected">✗ Not connected</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Connection Settings -->
                 <div class="panel" id="config-panel">
                     <div class="panel-header" onclick="togglePanel('config-panel')">
@@ -558,7 +597,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Voice Settings -->
                 <div class="panel" id="voice-panel">
                     <div class="panel-header" onclick="togglePanel('voice-panel')">
@@ -595,7 +634,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Material Settings -->
                 <div class="panel" id="material-panel">
                     <div class="panel-header" onclick="togglePanel('material-panel')">
@@ -626,7 +665,7 @@
                                 </div>
                                 <input type="range" id="skin-roughness" min="0.3" max="0.8" step="0.05" value="0.55">
                             </div>
-                            
+
                             <div class="section-label">HAIR</div>
                             <div class="form-row">
                                 <div class="form-label">
@@ -649,7 +688,7 @@
                                 </div>
                                 <input type="range" id="hair-roughness" min="0.2" max="0.7" step="0.05" value="0.45">
                             </div>
-                            
+
                             <div class="section-label">EYES</div>
                             <div class="form-row">
                                 <div class="form-label">
@@ -658,7 +697,7 @@
                                 </div>
                                 <input type="range" id="eyes-clearcoat" min="0.3" max="1.0" step="0.05" value="0.9">
                             </div>
-                            
+
                             <div class="form-row" style="margin-top: 0.75rem;">
                                 <button class="btn btn-small" id="reset-materials-btn">RESET DEFAULTS</button>
                             </div>
@@ -668,7 +707,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Scripts -->
     <script type="importmap">
     {
@@ -678,13 +717,13 @@
         }
     }
     </script>
-    
+
     <script>
         // Panel toggle
         function togglePanel(id) {
             document.getElementById(id).classList.toggle('open');
         }
-        
+
         // Material settings sliders
         document.addEventListener('DOMContentLoaded', () => {
             // Auto-resize textarea
@@ -693,59 +732,93 @@
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 100) + 'px';
             });
-            
+
+            // A2F Test Connection button
+            document.getElementById('a2f-test-btn')?.addEventListener('click', async () => {
+                const url = document.getElementById('a2f-server-url').value.trim();
+                const statusEl = document.getElementById('a2f-status');
+                
+                statusEl.textContent = '⋯ Testing...';
+                statusEl.className = 'a2f-status';
+                
+                try {
+                    const response = await fetch(`${url}/health`, { 
+                        method: 'GET',
+                        signal: AbortSignal.timeout(5000)
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        statusEl.textContent = `✓ Connected (${data.mode || 'ready'})`;
+                        statusEl.className = 'a2f-status connected';
+                        
+                        // Save URL and update app
+                        localStorage.setItem('a2f_server_url', url);
+                        if (window.app?.a2fClient) {
+                            window.app.a2fClient.configure({ serverUrl: url });
+                        }
+                    } else {
+                        statusEl.textContent = `✗ HTTP ${response.status}`;
+                        statusEl.className = 'a2f-status disconnected';
+                    }
+                } catch (err) {
+                    statusEl.textContent = `✗ ${err.message || 'Connection failed'}`;
+                    statusEl.className = 'a2f-status disconnected';
+                }
+            });
+
             // Skin sliders
             const skinClearcoat = document.getElementById('skin-clearcoat');
             const skinSheen = document.getElementById('skin-sheen');
             const skinRoughness = document.getElementById('skin-roughness');
-            
+
             skinClearcoat?.addEventListener('input', (e) => {
                 document.getElementById('skin-clearcoat-value').textContent = parseFloat(e.target.value).toFixed(2);
                 if (window.app?.renderer) {
                     app.renderer.updateMaterialSettings('skin', { clearcoat: parseFloat(e.target.value) });
                 }
             });
-            
+
             skinSheen?.addEventListener('input', (e) => {
                 document.getElementById('skin-sheen-value').textContent = parseFloat(e.target.value).toFixed(2);
                 if (window.app?.renderer) {
                     app.renderer.updateMaterialSettings('skin', { sheen: parseFloat(e.target.value) });
                 }
             });
-            
+
             skinRoughness?.addEventListener('input', (e) => {
                 document.getElementById('skin-roughness-value').textContent = parseFloat(e.target.value).toFixed(2);
                 if (window.app?.renderer) {
                     app.renderer.updateMaterialSettings('skin', { roughness: parseFloat(e.target.value) });
                 }
             });
-            
+
             // Hair sliders
             const hairAnisotropy = document.getElementById('hair-anisotropy');
             const hairSheen = document.getElementById('hair-sheen');
             const hairRoughness = document.getElementById('hair-roughness');
-            
+
             hairAnisotropy?.addEventListener('input', (e) => {
                 document.getElementById('hair-anisotropy-value').textContent = parseFloat(e.target.value).toFixed(2);
                 if (window.app?.renderer) {
                     app.renderer.updateMaterialSettings('hair', { anisotropy: parseFloat(e.target.value) });
                 }
             });
-            
+
             hairSheen?.addEventListener('input', (e) => {
                 document.getElementById('hair-sheen-value').textContent = parseFloat(e.target.value).toFixed(2);
                 if (window.app?.renderer) {
                     app.renderer.updateMaterialSettings('hair', { sheen: parseFloat(e.target.value) });
                 }
             });
-            
+
             hairRoughness?.addEventListener('input', (e) => {
                 document.getElementById('hair-roughness-value').textContent = parseFloat(e.target.value).toFixed(2);
                 if (window.app?.renderer) {
                     app.renderer.updateMaterialSettings('hair', { roughness: parseFloat(e.target.value) });
                 }
             });
-            
+
             // Eyes slider
             const eyesClearcoat = document.getElementById('eyes-clearcoat');
             eyesClearcoat?.addEventListener('input', (e) => {
@@ -754,7 +827,7 @@
                     app.renderer.updateMaterialSettings('eyes', { clearcoat: parseFloat(e.target.value) });
                 }
             });
-            
+
             // Reset button
             document.getElementById('reset-materials-btn')?.addEventListener('click', () => {
                 document.getElementById('skin-clearcoat').value = 0.04;
@@ -763,38 +836,39 @@
                 document.getElementById('skin-sheen-value').textContent = '0.25';
                 document.getElementById('skin-roughness').value = 0.55;
                 document.getElementById('skin-roughness-value').textContent = '0.55';
-                
+
                 document.getElementById('hair-anisotropy').value = 0.4;
                 document.getElementById('hair-anisotropy-value').textContent = '0.40';
                 document.getElementById('hair-sheen').value = 0.2;
                 document.getElementById('hair-sheen-value').textContent = '0.20';
                 document.getElementById('hair-roughness').value = 0.45;
                 document.getElementById('hair-roughness-value').textContent = '0.45';
-                
+
                 document.getElementById('eyes-clearcoat').value = 0.9;
                 document.getElementById('eyes-clearcoat-value').textContent = '0.90';
-                
+
                 if (window.app?.renderer) {
                     app.renderer.updateMaterialSettings('skin', { clearcoat: 0.04, sheen: 0.25, roughness: 0.55 });
                     app.renderer.updateMaterialSettings('hair', { anisotropy: 0.4, sheen: 0.2, roughness: 0.45 });
                     app.renderer.updateMaterialSettings('eyes', { clearcoat: 0.9 });
                 }
             });
-            
+
             // Voice sliders
             document.getElementById('speed-slider')?.addEventListener('input', (e) => {
                 document.getElementById('speed-value').textContent = parseFloat(e.target.value).toFixed(1) + '×';
             });
-            
+
             document.getElementById('intensity-slider')?.addEventListener('input', (e) => {
                 document.getElementById('intensity-value').textContent = Math.round(parseFloat(e.target.value) * 100) + '%';
             });
         });
     </script>
-    
+
     <script type="module" src="viseme-mapper.js"></script>
     <script type="module" src="blendshape-mapper.js"></script>
     <script type="module" src="avatar-renderer.js"></script>
+    <script type="module" src="audio2face-client.js"></script>
     <script type="module" src="azure-services-viseme.js"></script>
     <script type="module" src="app.js"></script>
 </body>
