@@ -1,0 +1,19 @@
+# Audio2Face Bridge Server Dependencies
+# Install with: pip install -r requirements.txt
+
+# Web server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+python-multipart>=0.0.6
+
+# Audio processing
+numpy>=1.24.0
+soundfile>=0.12.0
+
+# Optional: for audio resampling (if sample rates don't match)
+# librosa>=0.10.0
+
+# NVIDIA Audio2Face SDK (when available)
+# Install separately from NGC or HuggingFace
+# nvidia-audio2face>=1.0.0
