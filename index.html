@@ -80,7 +80,7 @@
         
         .nav-links a:hover { color: var(--text-secondary); }
         
-        @media (max-width: 600px) {
+        @media (max-width: 480px) {
             .nav-links { display: none; }
         }
         
@@ -96,7 +96,7 @@
         /* Avatar Container */
         .avatar-container {
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             aspect-ratio: 3/4;
             position: relative;
             background: radial-gradient(ellipse at center, rgba(30, 30, 30, 0.5) 0%, transparent 70%);
@@ -105,7 +105,7 @@
             overflow: hidden;
         }
         
-        @media (max-width: 600px) {
+        @media (max-width: 480px) {
             .avatar-container {
                 max-width: 100%;
                 aspect-ratio: 1/1;
@@ -157,7 +157,7 @@
         /* Controls Container */
         .controls-container {
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             margin-top: 1rem;
         }
         
@@ -235,7 +235,7 @@
             background: var(--text-muted);
         }
         
-        .status-dot.connected { background: var(--success); }
+        .status-dot.connected { background: #22d3ee; }
         .status-dot.speaking { background: var(--info); animation: pulse 1s infinite; }
         .status-dot.error { background: var(--error); }
         
