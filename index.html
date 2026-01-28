@@ -41,14 +41,14 @@
             overflow-x: hidden;
         }
         
-        /* Navigation */
+        /* Navigation - minimal */
         nav {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 1000;
-            padding: 1.5rem 3rem;
+            padding: 1rem 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -57,51 +57,66 @@
         
         .logo {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-weight: 500;
             letter-spacing: 0.15em;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             text-decoration: none;
             transition: color 0.3s ease;
         }
         
         .logo:hover {
-            color: var(--text-primary);
+            color: var(--text-secondary);
         }
         
         .nav-links {
             display: flex;
-            gap: 2rem;
+            gap: 1.5rem;
             align-items: center;
         }
         
         .nav-links a {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
             text-decoration: none;
             letter-spacing: 0.05em;
-            transition: color 0.3s ease;
+            transition: color 0.2s ease;
         }
         
         .nav-links a:hover {
-            color: var(--text-primary);
+            color: var(--text-secondary);
         }
         
-        /* Main Layout */
-        .container {
-            display: flex;
-            min-height: 100vh;
-            padding-top: 80px;
+        @media (max-width: 600px) {
+            .nav-links { display: none; }
         }
         
-        /* Avatar Viewport */
-        .avatar-section {
-            flex: 1;
+        /* Main Layout - Centered Column */
+        .main-container {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            padding: 60px 1rem 2rem;
+            min-height: 100vh;
+        }
+        
+        /* Avatar Container */
+        .avatar-container {
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 3/4;
             position: relative;
             background: radial-gradient(ellipse at center, rgba(30, 30, 30, 0.5) 0%, transparent 70%);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        @media (max-width: 600px) {
+            .avatar-container {
+                max-width: 100%;
+                aspect-ratio: 1/1;
+            }
         }
         
         #avatar-canvas {
@@ -121,7 +136,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 1.5rem;
+            gap: 1rem;
             z-index: 10;
             transition: opacity 0.5s ease;
         }
@@ -132,8 +147,8 @@
         }
         
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 30px;
+            height: 30px;
             border: 1px solid var(--border-color);
             border-top-color: var(--text-secondary);
             border-radius: 50%;
@@ -146,55 +161,83 @@
         
         .loading-text {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            letter-spacing: 0.1em;
-        }
-        
-        /* Control Panel */
-        .control-panel {
-            width: 400px;
-            background: var(--bg-secondary);
-            border-left: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        
-        .panel-header {
-            padding: 2rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .protocol-label {
-            font-family: 'JetBrains Mono', monospace;
             font-size: 0.65rem;
             color: var(--text-muted);
-            letter-spacing: 0.2em;
-            margin-bottom: 0.5rem;
-        }
-        
-        .protocol-title {
-            font-size: 1.5rem;
-            font-weight: 300;
             letter-spacing: 0.1em;
-            margin-bottom: 0.5rem;
         }
         
-        .protocol-subtitle {
-            font-size: 0.8rem;
+        /* Controls Container - Below Avatar */
+        .controls-container {
+            width: 100%;
+            max-width: 500px;
+            margin-top: 1rem;
+        }
+        
+        /* Chat Input - Primary */
+        .chat-input-container {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .chat-input-container textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+            min-height: 24px;
+            max-height: 100px;
+        }
+        
+        .chat-input-container textarea::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .input-btn {
+            width: 36px;
+            height: 36px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
             color: var(--text-secondary);
-            font-weight: 300;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 1rem;
         }
         
-        /* Status */
+        .input-btn:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+        
+        .input-btn.recording {
+            border-color: #ff4444;
+            color: #ff4444;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Status Bar */
         .status-bar {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 1rem 2rem;
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border-color);
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            margin-top: 0.5rem;
         }
         
         .status-dot {
@@ -202,253 +245,159 @@
             height: 6px;
             border-radius: 50%;
             background: var(--text-muted);
-            transition: all 0.3s ease;
         }
         
-        .status-dot.connected {
-            background: #4ade80;
-            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
-        }
-        
-        .status-dot.connecting {
-            background: #fbbf24;
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
+        .status-dot.connected { background: #4ade80; }
+        .status-dot.speaking { background: #60a5fa; animation: pulse 1s infinite; }
+        .status-dot.error { background: #f87171; }
         
         .status-text {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
             letter-spacing: 0.05em;
         }
         
-        /* Sections */
-        .panel-section {
-            border-bottom: 1px solid var(--border-color);
+        /* Collapsible Panels */
+        .panel-group {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
         
-        .section-header {
-            padding: 1rem 2rem;
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .panel-header {
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
             cursor: pointer;
             transition: background 0.2s ease;
         }
         
-        .section-header:hover {
-            background: var(--bg-card);
+        .panel-header:hover {
+            background: var(--bg-card-hover);
         }
         
-        .section-title {
+        .panel-title {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-secondary);
             letter-spacing: 0.1em;
         }
         
-        .section-toggle {
-            font-size: 0.8rem;
+        .panel-toggle {
+            font-size: 0.6rem;
             color: var(--text-muted);
             transition: transform 0.2s ease;
         }
         
-        .panel-section.open .section-toggle {
+        .panel.open .panel-toggle {
             transform: rotate(180deg);
         }
         
-        .section-content {
-            padding: 0 2rem 1.5rem;
-            display: none;
+        .panel-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
         }
         
-        .panel-section.open .section-content {
-            display: block;
+        .panel.open .panel-content {
+            max-height: 500px;
+        }
+        
+        .panel-inner {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border-color);
         }
         
         /* Form Elements */
-        .form-group {
-            margin-bottom: 1rem;
+        .form-row {
+            margin-bottom: 0.75rem;
         }
         
-        .form-group label {
-            display: block;
-            font-size: 0.7rem;
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        
+        .form-label label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
             color: var(--text-muted);
-            margin-bottom: 0.4rem;
             letter-spacing: 0.05em;
         }
         
-        .form-group input,
-        .form-group select {
+        .form-label .value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+        }
+        
+        input[type="text"],
+        input[type="password"],
+        select {
             width: 100%;
-            padding: 0.75rem 1rem;
+            padding: 0.5rem 0.75rem;
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
             border-radius: 4px;
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            outline: none;
             transition: border-color 0.2s ease;
         }
         
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        select:focus {
             border-color: var(--text-secondary);
         }
         
-        .form-group input::placeholder {
-            color: var(--text-muted);
-        }
-        
-        /* Chat Section */
-        .chat-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        
-        .chat-messages {
-            flex: 1;
-            padding: 1.5rem 2rem;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        
-        .message {
-            max-width: 85%;
-            padding: 0.75rem 1rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            line-height: 1.5;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .message.user {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            align-self: flex-end;
-        }
-        
-        .message.assistant {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            align-self: flex-start;
-            color: var(--text-secondary);
-        }
-        
-        .message.system {
-            background: transparent;
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 4px;
+            background: var(--border-color);
             border: none;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            align-self: center;
-            text-align: center;
+            border-radius: 2px;
         }
         
-        /* Input Area */
-        .input-area {
-            padding: 1.5rem 2rem;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            gap: 0.75rem;
-        }
-        
-        #user-input {
-            flex: 1;
-            padding: 0.75rem 1rem;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            resize: none;
-            transition: border-color 0.2s ease;
-        }
-        
-        #user-input:focus {
-            outline: none;
-            border-color: var(--text-secondary);
-        }
-        
-        #user-input::placeholder {
-            color: var(--text-muted);
-        }
-        
-        .input-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .icon-btn {
-            width: 42px;
-            height: 42px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: transparent;
-            color: var(--text-secondary);
-            font-size: 1rem;
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--text-secondary);
+            border-radius: 50%;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
         }
         
-        .icon-btn:hover {
-            border-color: var(--text-secondary);
-            color: var(--text-primary);
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--text-primary);
         }
         
-        .icon-btn.recording {
-            border-color: #4ade80;
-            color: #4ade80;
-            animation: pulse 1s infinite;
-        }
-        
-        /* Primary Button */
-        .primary-btn {
+        /* Buttons */
+        .btn {
             width: 100%;
-            padding: 0.75rem 1.5rem;
+            padding: 0.6rem 1rem;
             background: transparent;
             border: 1px solid var(--border-color);
             border-radius: 4px;
             color: var(--text-secondary);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            letter-spacing: 0.1em;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-top: 0.5rem;
-        }
-        
-        .primary-btn:hover {
-            border-color: var(--text-secondary);
-            color: var(--text-primary);
-        }
-        
-        .secondary-btn {
-            padding: 0.5rem 1rem;
-            background: transparent;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--text-muted);
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.65rem;
             letter-spacing: 0.1em;
@@ -456,9 +405,66 @@
             transition: all 0.2s ease;
         }
         
-        .secondary-btn:hover {
-            border-color: var(--text-muted);
+        .btn:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+        
+        .btn-small {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.6rem;
+        }
+        
+        /* Section Labels */
+        .section-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            margin: 0.75rem 0 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .section-label:first-child {
+            margin-top: 0;
+        }
+        
+        /* Chat Messages */
+        .chat-messages {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .chat-messages.has-messages {
+            display: block;
+        }
+        
+        .chat-message {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .chat-message:last-child {
+            margin-bottom: 0;
+        }
+        
+        .chat-message.user {
+            background: var(--bg-card);
             color: var(--text-secondary);
+        }
+        
+        .chat-message.assistant {
+            background: transparent;
+            color: var(--text-primary);
         }
         
         /* Scrollbar */
@@ -474,82 +480,6 @@
             background: var(--border-color);
             border-radius: 2px;
         }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
-        }
-        
-        /* Responsive */
-        @media (max-width: 900px) {
-            .container {
-                flex-direction: column;
-            }
-            
-            .avatar-section {
-                height: 50vh;
-                min-height: 300px;
-            }
-            
-            .control-panel {
-                width: 100%;
-                flex: 1;
-                border-left: none;
-                border-top: 1px solid var(--border-color);
-            }
-            
-            nav {
-                padding: 1rem 1.5rem;
-            }
-            
-            .nav-links {
-                display: none;
-            }
-        }
-        
-        /* Voice Select Styling */
-        .form-group select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='rgba(255,255,255,0.3)' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            padding-right: 2.5rem;
-        }
-        
-        /* Range Slider */
-        .form-group input[type="range"] {
-            -webkit-appearance: none;
-            height: 4px;
-            background: var(--border-color);
-            border: none;
-            border-radius: 2px;
-            padding: 0;
-        }
-        
-        .form-group input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
-            background: var(--text-secondary);
-            border-radius: 50%;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        
-        .form-group input[type="range"]::-webkit-slider-thumb:hover {
-            background: var(--text-primary);
-        }
-        
-        .range-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .range-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
     </style>
 </head>
 <body>
@@ -560,14 +490,13 @@
             <a href="https://www.greystratum.com/protocols/concordia.html">Concordia</a>
             <a href="https://www.greystratum.com/protocols/cantara.html">Cantara</a>
             <a href="https://www.greystratum.com/protocols/mandatum.html">Mandatum</a>
-            <a href="https://www.greystratum.com/portal.html">Signal</a>
         </div>
     </nav>
     
     <!-- Main Container -->
-    <div class="container">
-        <!-- Avatar Viewport -->
-        <div class="avatar-section">
+    <div class="main-container">
+        <!-- Avatar -->
+        <div class="avatar-container">
             <canvas id="avatar-canvas"></canvas>
             <div class="loading-overlay" id="loading-overlay">
                 <div class="spinner"></div>
@@ -575,13 +504,13 @@
             </div>
         </div>
         
-        <!-- Control Panel -->
-        <div class="control-panel">
-            <!-- Header -->
-            <div class="panel-header">
-                <div class="protocol-label">PROTOCOL 005</div>
-                <h1 class="protocol-title">Vestis</h1>
-                <p class="protocol-subtitle">Presence made manifest. Voice given form.</p>
+        <!-- Controls Below Avatar -->
+        <div class="controls-container">
+            <!-- Chat Input -->
+            <div class="chat-input-container">
+                <textarea id="user-input" placeholder="Speak or type..." rows="1"></textarea>
+                <button class="input-btn" id="mic-btn" title="Voice Input">◉</button>
+                <button class="input-btn" id="send-btn" title="Send">↑</button>
             </div>
             
             <!-- Status -->
@@ -590,158 +519,150 @@
                 <span class="status-text" id="status-text">AWAITING CONNECTION</span>
             </div>
             
-            <!-- Configuration Section -->
-            <div class="panel-section" id="config-section">
-                <div class="section-header" onclick="toggleSection('config-section')">
-                    <span class="section-title">CONFIGURATION</span>
-                    <span class="section-toggle">▼</span>
-                </div>
-                <div class="section-content">
-                    <div class="form-group">
-                        <label>SPEECH KEY</label>
-                        <input type="password" id="speech-key" placeholder="Azure Speech API key">
-                    </div>
-                    <div class="form-group">
-                        <label>REGION</label>
-                        <input type="text" id="speech-region" placeholder="e.g., eastus">
-                    </div>
-                    <div class="form-group">
-                        <label>OPENAI ENDPOINT</label>
-                        <input type="text" id="openai-endpoint" placeholder="https://your-resource.openai.azure.com">
-                    </div>
-                    <div class="form-group">
-                        <label>OPENAI KEY</label>
-                        <input type="password" id="openai-key" placeholder="Azure OpenAI API key">
-                    </div>
-                    <div class="form-group">
-                        <label>DEPLOYMENT</label>
-                        <input type="text" id="openai-deployment" placeholder="e.g., gpt-4o">
-                    </div>
-                    <button class="primary-btn" id="connect-btn">ESTABLISH CONNECTION</button>
-                </div>
-            </div>
+            <!-- Chat History -->
+            <div class="chat-messages" id="chat-messages"></div>
             
-            <!-- Voice Settings -->
-            <div class="panel-section" id="voice-section">
-                <div class="section-header" onclick="toggleSection('voice-section')">
-                    <span class="section-title">VOICE PARAMETERS</span>
-                    <span class="section-toggle">▼</span>
+            <!-- Collapsible Panels -->
+            <div class="panel-group">
+                <!-- Connection Settings -->
+                <div class="panel" id="config-panel">
+                    <div class="panel-header" onclick="togglePanel('config-panel')">
+                        <span class="panel-title">CONNECTION</span>
+                        <span class="panel-toggle">▼</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="panel-inner">
+                            <div class="form-row">
+                                <div class="form-label"><label>SPEECH KEY</label></div>
+                                <input type="password" id="speech-key" placeholder="Azure Speech API key">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label"><label>REGION</label></div>
+                                <input type="text" id="speech-region" placeholder="e.g., eastus">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label"><label>OPENAI ENDPOINT</label></div>
+                                <input type="text" id="openai-endpoint" placeholder="https://your-resource.openai.azure.com">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label"><label>OPENAI KEY</label></div>
+                                <input type="password" id="openai-key" placeholder="Azure OpenAI API key">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label"><label>DEPLOYMENT</label></div>
+                                <input type="text" id="openai-deployment" placeholder="e.g., gpt-4o">
+                            </div>
+                            <div class="form-row">
+                                <button class="btn" id="connect-btn">ESTABLISH CONNECTION</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="section-content">
-                    <div class="form-group">
-                        <label>VOICE MODEL</label>
-                        <select id="voice-select">
-                            <option value="en-US-AndrewMultilingualNeural">Andrew</option>
-                            <option value="en-US-AvaMultilingualNeural">Ava</option>
-                            <option value="en-US-BrianMultilingualNeural">Brian</option>
-                            <option value="en-US-EmmaMultilingualNeural">Emma</option>
-                            <option value="en-US-JennyNeural">Jenny</option>
-                            <option value="en-US-GuyNeural">Guy</option>
-                            <option value="en-US-AriaNeural">Aria</option>
-                            <option value="en-US-DavisNeural">Davis</option>
-                        </select>
+                
+                <!-- Voice Settings -->
+                <div class="panel" id="voice-panel">
+                    <div class="panel-header" onclick="togglePanel('voice-panel')">
+                        <span class="panel-title">VOICE</span>
+                        <span class="panel-toggle">▼</span>
                     </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>RATE</label>
-                            <span class="range-value" id="speed-value">1.0×</span>
+                    <div class="panel-content">
+                        <div class="panel-inner">
+                            <div class="form-row">
+                                <div class="form-label"><label>VOICE MODEL</label></div>
+                                <select id="voice-select">
+                                    <option value="en-US-AndrewMultilingualNeural">Andrew</option>
+                                    <option value="en-US-AvaMultilingualNeural">Ava</option>
+                                    <option value="en-US-BrianMultilingualNeural">Brian</option>
+                                    <option value="en-US-EmmaMultilingualNeural">Emma</option>
+                                    <option value="en-US-JennyNeural">Jenny</option>
+                                    <option value="en-US-GuyNeural">Guy</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>RATE</label>
+                                    <span class="value" id="speed-value">1.0×</span>
+                                </div>
+                                <input type="range" id="speed-slider" min="0.5" max="1.5" step="0.1" value="1.0">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>MOUTH INTENSITY</label>
+                                    <span class="value" id="intensity-value">100%</span>
+                                </div>
+                                <input type="range" id="intensity-slider" min="0.3" max="1.5" step="0.1" value="1.0">
+                            </div>
                         </div>
-                        <input type="range" id="speed-slider" min="0.5" max="1.5" step="0.1" value="1.0">
-                    </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>MOUTH INTENSITY</label>
-                            <span class="range-value" id="intensity-value">100%</span>
-                        </div>
-                        <input type="range" id="intensity-slider" min="0.3" max="1.5" step="0.1" value="1.0">
                     </div>
                 </div>
-            </div>
-            
-            <!-- Material Settings -->
-            <div class="panel-section" id="material-section">
-                <div class="section-header" onclick="toggleSection('material-section')">
-                    <span class="section-title">MATERIAL SETTINGS</span>
-                    <span class="section-toggle">▼</span>
-                </div>
-                <div class="section-content">
-                    <!-- Skin -->
-                    <div class="form-group">
-                        <label style="color: var(--text-secondary); font-size: 0.65rem; margin-bottom: 0.5rem;">— SKIN —</label>
+                
+                <!-- Material Settings -->
+                <div class="panel" id="material-panel">
+                    <div class="panel-header" onclick="togglePanel('material-panel')">
+                        <span class="panel-title">MATERIALS</span>
+                        <span class="panel-toggle">▼</span>
                     </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>CLEARCOAT</label>
-                            <span class="range-value" id="skin-clearcoat-value">0.04</span>
+                    <div class="panel-content">
+                        <div class="panel-inner">
+                            <div class="section-label">SKIN</div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>CLEARCOAT</label>
+                                    <span class="value" id="skin-clearcoat-value">0.04</span>
+                                </div>
+                                <input type="range" id="skin-clearcoat" min="0" max="0.2" step="0.01" value="0.04">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>SHEEN</label>
+                                    <span class="value" id="skin-sheen-value">0.25</span>
+                                </div>
+                                <input type="range" id="skin-sheen" min="0" max="0.6" step="0.05" value="0.25">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>ROUGHNESS</label>
+                                    <span class="value" id="skin-roughness-value">0.55</span>
+                                </div>
+                                <input type="range" id="skin-roughness" min="0.3" max="0.8" step="0.05" value="0.55">
+                            </div>
+                            
+                            <div class="section-label">HAIR</div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>ANISOTROPY</label>
+                                    <span class="value" id="hair-anisotropy-value">0.40</span>
+                                </div>
+                                <input type="range" id="hair-anisotropy" min="0" max="1.5" step="0.1" value="0.4">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>SHEEN</label>
+                                    <span class="value" id="hair-sheen-value">0.20</span>
+                                </div>
+                                <input type="range" id="hair-sheen" min="0" max="0.6" step="0.05" value="0.2">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>ROUGHNESS</label>
+                                    <span class="value" id="hair-roughness-value">0.45</span>
+                                </div>
+                                <input type="range" id="hair-roughness" min="0.2" max="0.7" step="0.05" value="0.45">
+                            </div>
+                            
+                            <div class="section-label">EYES</div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <label>WETNESS</label>
+                                    <span class="value" id="eyes-clearcoat-value">0.90</span>
+                                </div>
+                                <input type="range" id="eyes-clearcoat" min="0.3" max="1.0" step="0.05" value="0.9">
+                            </div>
+                            
+                            <div class="form-row" style="margin-top: 0.75rem;">
+                                <button class="btn btn-small" id="reset-materials-btn">RESET DEFAULTS</button>
+                            </div>
                         </div>
-                        <input type="range" id="skin-clearcoat" min="0" max="0.2" step="0.01" value="0.04">
-                    </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>SHEEN</label>
-                            <span class="range-value" id="skin-sheen-value">0.25</span>
-                        </div>
-                        <input type="range" id="skin-sheen" min="0" max="0.6" step="0.05" value="0.25">
-                    </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>ROUGHNESS</label>
-                            <span class="range-value" id="skin-roughness-value">0.55</span>
-                        </div>
-                        <input type="range" id="skin-roughness" min="0.3" max="0.8" step="0.05" value="0.55">
-                    </div>
-                    
-                    <!-- Hair -->
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <label style="color: var(--text-secondary); font-size: 0.65rem; margin-bottom: 0.5rem;">— HAIR —</label>
-                    </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>ANISOTROPY</label>
-                            <span class="range-value" id="hair-anisotropy-value">0.40</span>
-                        </div>
-                        <input type="range" id="hair-anisotropy" min="0" max="1.5" step="0.1" value="0.4">
-                    </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>SHEEN</label>
-                            <span class="range-value" id="hair-sheen-value">0.20</span>
-                        </div>
-                        <input type="range" id="hair-sheen" min="0" max="0.6" step="0.05" value="0.2">
-                    </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>ROUGHNESS</label>
-                            <span class="range-value" id="hair-roughness-value">0.45</span>
-                        </div>
-                        <input type="range" id="hair-roughness" min="0.2" max="0.7" step="0.05" value="0.45">
-                    </div>
-                    
-                    <!-- Eyes -->
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <label style="color: var(--text-secondary); font-size: 0.65rem; margin-bottom: 0.5rem;">— EYES —</label>
-                    </div>
-                    <div class="form-group">
-                        <div class="range-label">
-                            <label>WETNESS</label>
-                            <span class="range-value" id="eyes-clearcoat-value">0.90</span>
-                        </div>
-                        <input type="range" id="eyes-clearcoat" min="0.3" max="1.0" step="0.05" value="0.9">
-                    </div>
-                    
-                    <!-- Reset button -->
-                    <button class="secondary-btn" id="reset-materials-btn" style="margin-top: 1rem; width: 100%;">RESET DEFAULTS</button>
-                </div>
-            </div>
-            
-            <!-- Chat Interface -->
-            <div class="chat-section">
-                <div class="chat-messages" id="chat-messages"></div>
-                <div class="input-area">
-                    <textarea id="user-input" placeholder="Speak or type..." rows="1"></textarea>
-                    <div class="input-buttons">
-                        <button class="icon-btn" id="mic-btn" title="Voice Input">◉</button>
-                        <button class="icon-btn" id="send-btn" title="Send">↑</button>
                     </div>
                 </div>
             </div>
@@ -759,13 +680,20 @@
     </script>
     
     <script>
-        // Section toggle
-        function toggleSection(id) {
+        // Panel toggle
+        function togglePanel(id) {
             document.getElementById(id).classList.toggle('open');
         }
         
         // Material settings sliders
         document.addEventListener('DOMContentLoaded', () => {
+            // Auto-resize textarea
+            const textarea = document.getElementById('user-input');
+            textarea?.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            });
+            
             // Skin sliders
             const skinClearcoat = document.getElementById('skin-clearcoat');
             const skinSheen = document.getElementById('skin-sheen');
@@ -829,7 +757,6 @@
             
             // Reset button
             document.getElementById('reset-materials-btn')?.addEventListener('click', () => {
-                // Reset skin
                 document.getElementById('skin-clearcoat').value = 0.04;
                 document.getElementById('skin-clearcoat-value').textContent = '0.04';
                 document.getElementById('skin-sheen').value = 0.25;
@@ -837,7 +764,6 @@
                 document.getElementById('skin-roughness').value = 0.55;
                 document.getElementById('skin-roughness-value').textContent = '0.55';
                 
-                // Reset hair
                 document.getElementById('hair-anisotropy').value = 0.4;
                 document.getElementById('hair-anisotropy-value').textContent = '0.40';
                 document.getElementById('hair-sheen').value = 0.2;
@@ -845,16 +771,23 @@
                 document.getElementById('hair-roughness').value = 0.45;
                 document.getElementById('hair-roughness-value').textContent = '0.45';
                 
-                // Reset eyes
                 document.getElementById('eyes-clearcoat').value = 0.9;
                 document.getElementById('eyes-clearcoat-value').textContent = '0.90';
                 
-                // Apply to renderer
                 if (window.app?.renderer) {
                     app.renderer.updateMaterialSettings('skin', { clearcoat: 0.04, sheen: 0.25, roughness: 0.55 });
                     app.renderer.updateMaterialSettings('hair', { anisotropy: 0.4, sheen: 0.2, roughness: 0.45 });
                     app.renderer.updateMaterialSettings('eyes', { clearcoat: 0.9 });
                 }
+            });
+            
+            // Voice sliders
+            document.getElementById('speed-slider')?.addEventListener('input', (e) => {
+                document.getElementById('speed-value').textContent = parseFloat(e.target.value).toFixed(1) + '×';
+            });
+            
+            document.getElementById('intensity-slider')?.addEventListener('input', (e) => {
+                document.getElementById('intensity-value').textContent = Math.round(parseFloat(e.target.value) * 100) + '%';
             });
         });
     </script>
