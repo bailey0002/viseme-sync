@@ -525,7 +525,7 @@ class App {
     }
 
     setStatus(status, message) {
-        this.elements.statusIndicator.className = status;
+        this.elements.statusIndicator.className = 'status-dot ' + status;
         this.elements.statusText.textContent = message;
     }
 
