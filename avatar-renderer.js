@@ -99,15 +99,15 @@ class AvatarRenderer {
             // HAIR (avaturn_hair_0, avaturn_hair_1)
             hair: {
                 // Anisotropy creates strand-like highlights
-                anisotropy: 1.0,            // Full anisotropic effect
+                anisotropy: 0.4,            // Subtle strand effect
                 anisotropyRotation: 0,      // Will be set per-mesh based on UVs
-                roughness: 0.35,            // Hair is somewhat shiny
-                sheen: 0.4,                 // Secondary soft highlight
+                roughness: 0.45,            // Slightly less shiny
+                sheen: 0.2,                 // Reduced secondary highlight
                 sheenRoughness: 0.5,
                 sheenColor: null,           // Will match hair color from texture
-                clearcoat: 0.05,            // Very subtle top sheen
+                clearcoat: 0.03,            // Very subtle top sheen
                 clearcoatRoughness: 0.5,
-                envMapIntensity: 0.6,
+                envMapIntensity: 0.4,
             },
             
             // EYELASHES (Eyelash_Mesh)
@@ -815,7 +815,8 @@ class AvatarRenderer {
         const height = box.max.y - box.min.y;
         const faceY = height * 0.88;
 
-        this.model.rotation.y = Math.PI;
+        // Model faces forward (no rotation needed for this model)
+        this.model.rotation.y = 0;
         
         this.camera.position.set(0, faceY, 0.65);
         this.controls.target.set(0, faceY, 0);
@@ -842,22 +843,22 @@ class AvatarRenderer {
         // Arms draped naturally at sides
         if (this.bones.RightArm) {
             this.bones.RightArm.rotation.set(0, 0, 0);
-            this.bones.RightArm.rotation.x = 0.05;   // Minimal forward
-            this.bones.RightArm.rotation.z = 1.2;    // Down at side
+            this.bones.RightArm.rotation.x = 0.15;    // Slight forward
+            this.bones.RightArm.rotation.z = -1.0;    // Down at side
         }
         if (this.bones.RightForeArm) {
             this.bones.RightForeArm.rotation.set(0, 0, 0);
-            this.bones.RightForeArm.rotation.z = 0.1;  // Slight natural bend
+            this.bones.RightForeArm.rotation.z = -0.15; // Slight natural bend
         }
         
         if (this.bones.LeftArm) {
             this.bones.LeftArm.rotation.set(0, 0, 0);
-            this.bones.LeftArm.rotation.x = 0.05;    // Minimal forward
-            this.bones.LeftArm.rotation.z = -1.2;    // Down at side
+            this.bones.LeftArm.rotation.x = 0.15;     // Slight forward
+            this.bones.LeftArm.rotation.z = 1.0;      // Down at side
         }
         if (this.bones.LeftForeArm) {
             this.bones.LeftForeArm.rotation.set(0, 0, 0);
-            this.bones.LeftForeArm.rotation.z = -0.1; // Slight natural bend
+            this.bones.LeftForeArm.rotation.z = 0.15;  // Slight natural bend
         }
         
         console.log('Arms positioned');

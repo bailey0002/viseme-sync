@@ -443,6 +443,24 @@
             color: var(--text-primary);
         }
         
+        .secondary-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .secondary-btn:hover {
+            border-color: var(--text-muted);
+            color: var(--text-secondary);
+        }
+        
         /* Scrollbar */
         ::-webkit-scrollbar {
             width: 4px;
@@ -640,6 +658,82 @@
                 </div>
             </div>
             
+            <!-- Material Settings -->
+            <div class="panel-section" id="material-section">
+                <div class="section-header" onclick="toggleSection('material-section')">
+                    <span class="section-title">MATERIAL SETTINGS</span>
+                    <span class="section-toggle">▼</span>
+                </div>
+                <div class="section-content">
+                    <!-- Skin -->
+                    <div class="form-group">
+                        <label style="color: var(--text-secondary); font-size: 0.65rem; margin-bottom: 0.5rem;">— SKIN —</label>
+                    </div>
+                    <div class="form-group">
+                        <div class="range-label">
+                            <label>CLEARCOAT</label>
+                            <span class="range-value" id="skin-clearcoat-value">0.04</span>
+                        </div>
+                        <input type="range" id="skin-clearcoat" min="0" max="0.2" step="0.01" value="0.04">
+                    </div>
+                    <div class="form-group">
+                        <div class="range-label">
+                            <label>SHEEN</label>
+                            <span class="range-value" id="skin-sheen-value">0.25</span>
+                        </div>
+                        <input type="range" id="skin-sheen" min="0" max="0.6" step="0.05" value="0.25">
+                    </div>
+                    <div class="form-group">
+                        <div class="range-label">
+                            <label>ROUGHNESS</label>
+                            <span class="range-value" id="skin-roughness-value">0.55</span>
+                        </div>
+                        <input type="range" id="skin-roughness" min="0.3" max="0.8" step="0.05" value="0.55">
+                    </div>
+                    
+                    <!-- Hair -->
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label style="color: var(--text-secondary); font-size: 0.65rem; margin-bottom: 0.5rem;">— HAIR —</label>
+                    </div>
+                    <div class="form-group">
+                        <div class="range-label">
+                            <label>ANISOTROPY</label>
+                            <span class="range-value" id="hair-anisotropy-value">0.40</span>
+                        </div>
+                        <input type="range" id="hair-anisotropy" min="0" max="1.5" step="0.1" value="0.4">
+                    </div>
+                    <div class="form-group">
+                        <div class="range-label">
+                            <label>SHEEN</label>
+                            <span class="range-value" id="hair-sheen-value">0.20</span>
+                        </div>
+                        <input type="range" id="hair-sheen" min="0" max="0.6" step="0.05" value="0.2">
+                    </div>
+                    <div class="form-group">
+                        <div class="range-label">
+                            <label>ROUGHNESS</label>
+                            <span class="range-value" id="hair-roughness-value">0.45</span>
+                        </div>
+                        <input type="range" id="hair-roughness" min="0.2" max="0.7" step="0.05" value="0.45">
+                    </div>
+                    
+                    <!-- Eyes -->
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label style="color: var(--text-secondary); font-size: 0.65rem; margin-bottom: 0.5rem;">— EYES —</label>
+                    </div>
+                    <div class="form-group">
+                        <div class="range-label">
+                            <label>WETNESS</label>
+                            <span class="range-value" id="eyes-clearcoat-value">0.90</span>
+                        </div>
+                        <input type="range" id="eyes-clearcoat" min="0.3" max="1.0" step="0.05" value="0.9">
+                    </div>
+                    
+                    <!-- Reset button -->
+                    <button class="secondary-btn" id="reset-materials-btn" style="margin-top: 1rem; width: 100%;">RESET DEFAULTS</button>
+                </div>
+            </div>
+            
             <!-- Chat Interface -->
             <div class="chat-section">
                 <div class="chat-messages" id="chat-messages"></div>
@@ -669,6 +763,100 @@
         function toggleSection(id) {
             document.getElementById(id).classList.toggle('open');
         }
+        
+        // Material settings sliders
+        document.addEventListener('DOMContentLoaded', () => {
+            // Skin sliders
+            const skinClearcoat = document.getElementById('skin-clearcoat');
+            const skinSheen = document.getElementById('skin-sheen');
+            const skinRoughness = document.getElementById('skin-roughness');
+            
+            skinClearcoat?.addEventListener('input', (e) => {
+                document.getElementById('skin-clearcoat-value').textContent = parseFloat(e.target.value).toFixed(2);
+                if (window.app?.renderer) {
+                    app.renderer.updateMaterialSettings('skin', { clearcoat: parseFloat(e.target.value) });
+                }
+            });
+            
+            skinSheen?.addEventListener('input', (e) => {
+                document.getElementById('skin-sheen-value').textContent = parseFloat(e.target.value).toFixed(2);
+                if (window.app?.renderer) {
+                    app.renderer.updateMaterialSettings('skin', { sheen: parseFloat(e.target.value) });
+                }
+            });
+            
+            skinRoughness?.addEventListener('input', (e) => {
+                document.getElementById('skin-roughness-value').textContent = parseFloat(e.target.value).toFixed(2);
+                if (window.app?.renderer) {
+                    app.renderer.updateMaterialSettings('skin', { roughness: parseFloat(e.target.value) });
+                }
+            });
+            
+            // Hair sliders
+            const hairAnisotropy = document.getElementById('hair-anisotropy');
+            const hairSheen = document.getElementById('hair-sheen');
+            const hairRoughness = document.getElementById('hair-roughness');
+            
+            hairAnisotropy?.addEventListener('input', (e) => {
+                document.getElementById('hair-anisotropy-value').textContent = parseFloat(e.target.value).toFixed(2);
+                if (window.app?.renderer) {
+                    app.renderer.updateMaterialSettings('hair', { anisotropy: parseFloat(e.target.value) });
+                }
+            });
+            
+            hairSheen?.addEventListener('input', (e) => {
+                document.getElementById('hair-sheen-value').textContent = parseFloat(e.target.value).toFixed(2);
+                if (window.app?.renderer) {
+                    app.renderer.updateMaterialSettings('hair', { sheen: parseFloat(e.target.value) });
+                }
+            });
+            
+            hairRoughness?.addEventListener('input', (e) => {
+                document.getElementById('hair-roughness-value').textContent = parseFloat(e.target.value).toFixed(2);
+                if (window.app?.renderer) {
+                    app.renderer.updateMaterialSettings('hair', { roughness: parseFloat(e.target.value) });
+                }
+            });
+            
+            // Eyes slider
+            const eyesClearcoat = document.getElementById('eyes-clearcoat');
+            eyesClearcoat?.addEventListener('input', (e) => {
+                document.getElementById('eyes-clearcoat-value').textContent = parseFloat(e.target.value).toFixed(2);
+                if (window.app?.renderer) {
+                    app.renderer.updateMaterialSettings('eyes', { clearcoat: parseFloat(e.target.value) });
+                }
+            });
+            
+            // Reset button
+            document.getElementById('reset-materials-btn')?.addEventListener('click', () => {
+                // Reset skin
+                document.getElementById('skin-clearcoat').value = 0.04;
+                document.getElementById('skin-clearcoat-value').textContent = '0.04';
+                document.getElementById('skin-sheen').value = 0.25;
+                document.getElementById('skin-sheen-value').textContent = '0.25';
+                document.getElementById('skin-roughness').value = 0.55;
+                document.getElementById('skin-roughness-value').textContent = '0.55';
+                
+                // Reset hair
+                document.getElementById('hair-anisotropy').value = 0.4;
+                document.getElementById('hair-anisotropy-value').textContent = '0.40';
+                document.getElementById('hair-sheen').value = 0.2;
+                document.getElementById('hair-sheen-value').textContent = '0.20';
+                document.getElementById('hair-roughness').value = 0.45;
+                document.getElementById('hair-roughness-value').textContent = '0.45';
+                
+                // Reset eyes
+                document.getElementById('eyes-clearcoat').value = 0.9;
+                document.getElementById('eyes-clearcoat-value').textContent = '0.90';
+                
+                // Apply to renderer
+                if (window.app?.renderer) {
+                    app.renderer.updateMaterialSettings('skin', { clearcoat: 0.04, sheen: 0.25, roughness: 0.55 });
+                    app.renderer.updateMaterialSettings('hair', { anisotropy: 0.4, sheen: 0.2, roughness: 0.45 });
+                    app.renderer.updateMaterialSettings('eyes', { clearcoat: 0.9 });
+                }
+            });
+        });
     </script>
     
     <script type="module" src="viseme-mapper.js"></script>
