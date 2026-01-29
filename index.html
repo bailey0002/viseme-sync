@@ -304,7 +304,10 @@
     }
     
     /* Form Elements */
-    .form-row { margin-bottom: 0.75rem; }
+    .form-row {
+        margin-bottom: 0.75rem;
+    }
+    
     .form-row:last-child { margin-bottom: 0; }
     
     .form-label {
@@ -344,7 +347,9 @@
     
     input[type="text"]:focus,
     input[type="password"]:focus,
-    select:focus { border-color: var(--text-secondary); }
+    select:focus {
+        border-color: var(--text-secondary);
+    }
     
     input[type="range"] {
         width: 100%;
@@ -364,7 +369,9 @@
         cursor: pointer;
     }
     
-    input[type="range"]::-webkit-slider-thumb:hover { background: var(--text-primary); }
+    input[type="range"]::-webkit-slider-thumb:hover {
+        background: var(--text-primary);
+    }
     
     /* Buttons */
     .btn {
@@ -386,7 +393,10 @@
         color: var(--text-primary);
     }
     
-    .btn-small { padding: 0.4rem 0.75rem; font-size: 0.7rem; }
+    .btn-small {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.7rem;
+    }
     
     /* Section Labels */
     .section-label {
@@ -401,7 +411,7 @@
     
     .section-label:first-child { margin-top: 0; }
     
-    /* A2F Status */
+    /* A2F Status Indicator */
     .a2f-status {
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.7rem;
@@ -422,7 +432,7 @@
         border: 1px solid rgba(248, 113, 113, 0.3);
     }
     
-    /* Toggle */
+    /* Toggle Switch */
     .toggle-row {
         display: flex;
         justify-content: space-between;
@@ -448,7 +458,10 @@
         cursor: pointer;
     }
     
-    .toggle-select:focus { border-color: var(--text-secondary); outline: none; }
+    .toggle-select:focus {
+        border-color: var(--text-secondary);
+        outline: none;
+    }
     
     /* Chat Messages */
     .chat-messages {
@@ -474,6 +487,7 @@
     .chat-message:last-child { margin-bottom: 0; }
     .chat-message.user { background: var(--bg-card); color: var(--text-secondary); }
     .chat-message.assistant { background: transparent; color: var(--text-primary); }
+    .chat-message.system { color: var(--text-muted); font-size: 0.75rem; }
     
     /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
@@ -484,6 +498,7 @@
 
 </head>
 <body>
+    <!-- Navigation -->
     <nav>
         <a href="https://www.greystratum.com" class="logo">GREYSTRATUM</a>
         <div class="nav-links">
@@ -494,7 +509,9 @@
     </nav>
 
 ```
+<!-- Main Container -->
 <div class="main-container">
+    <!-- Avatar -->
     <div class="avatar-container">
         <canvas id="avatar-canvas"></canvas>
         <div class="loading-overlay" id="loading-overlay">
@@ -503,21 +520,28 @@
         </div>
     </div>
 
+    <!-- Controls Below Avatar -->
     <div class="controls-container">
+        <!-- Chat Input -->
         <div class="chat-input-container">
             <textarea id="user-input" placeholder="Speak or type..." rows="1"></textarea>
             <button class="input-btn" id="mic-btn" title="Voice Input">◉</button>
             <button class="input-btn" id="send-btn" title="Send">↑</button>
         </div>
 
+        <!-- Status -->
         <div class="status-bar">
             <span class="status-dot" id="status-indicator"></span>
             <span class="status-text" id="status-text">AWAITING CONNECTION</span>
         </div>
 
+        <!-- Chat History -->
         <div class="chat-messages" id="chat-messages"></div>
 
+        <!-- Collapsible Panels -->
         <div class="panel-group">
+            
+            <!-- Audio2Face Settings (NEW) -->
             <div class="panel" id="a2f-panel">
                 <div class="panel-header" onclick="togglePanel('a2f-panel')">
                     <span class="panel-title">LIP-SYNC ENGINE</span>
@@ -532,6 +556,7 @@
                                 <option value="a2f">Audio2Face (52 ARKit)</option>
                             </select>
                         </div>
+                        
                         <div class="section-label">A2F SERVER</div>
                         <div class="form-row">
                             <input type="text" id="a2f-server-url" placeholder="http://localhost:8000" value="http://localhost:8000">
@@ -544,6 +569,7 @@
                 </div>
             </div>
 
+            <!-- Connection Settings -->
             <div class="panel" id="config-panel">
                 <div class="panel-header" onclick="togglePanel('config-panel')">
                     <span class="panel-title">CONNECTION</span>
@@ -578,6 +604,7 @@
                 </div>
             </div>
 
+            <!-- Voice Settings -->
             <div class="panel" id="voice-panel">
                 <div class="panel-header" onclick="togglePanel('voice-panel')">
                     <span class="panel-title">VOICE</span>
@@ -614,6 +641,7 @@
                 </div>
             </div>
 
+            <!-- Material Settings -->
             <div class="panel" id="material-panel">
                 <div class="panel-header" onclick="togglePanel('material-panel')">
                     <span class="panel-title">MATERIALS</span>
@@ -686,6 +714,7 @@
     </div>
 </div>
 
+<!-- Scripts -->
 <script type="importmap">
 {
     "imports": {
@@ -696,17 +725,21 @@
 </script>
 
 <script>
+    // Panel toggle
     function togglePanel(id) {
         document.getElementById(id).classList.toggle('open');
     }
 
+    // Material settings sliders
     document.addEventListener('DOMContentLoaded', () => {
+        // Auto-resize textarea
         const textarea = document.getElementById('user-input');
         textarea?.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
 
+        // A2F Test Connection button
         document.getElementById('a2f-test-btn')?.addEventListener('click', async () => {
             const url = document.getElementById('a2f-server-url').value.trim();
             const statusEl = document.getElementById('a2f-status');
@@ -724,7 +757,12 @@
                     const data = await response.json();
                     statusEl.textContent = `✓ Connected (${data.mode || 'ready'})`;
                     statusEl.className = 'a2f-status connected';
+                    
+                    // Save URL and update app
                     localStorage.setItem('a2f_server_url', url);
+                    if (window.app?.a2fClient) {
+                        window.app.a2fClient.configure({ serverUrl: url });
+                    }
                 } else {
                     statusEl.textContent = `✗ HTTP ${response.status}`;
                     statusEl.className = 'a2f-status disconnected';
@@ -735,44 +773,86 @@
             }
         });
 
-        // Material sliders
-        ['skin-clearcoat', 'skin-sheen', 'skin-roughness'].forEach(id => {
-            document.getElementById(id)?.addEventListener('input', (e) => {
-                document.getElementById(id + '-value').textContent = parseFloat(e.target.value).toFixed(2);
-                if (window.app?.renderer) {
-                    const prop = id.split('-')[1];
-                    app.renderer.updateMaterialSettings('skin', { [prop]: parseFloat(e.target.value) });
-                }
-            });
+        // Skin sliders
+        const skinClearcoat = document.getElementById('skin-clearcoat');
+        const skinSheen = document.getElementById('skin-sheen');
+        const skinRoughness = document.getElementById('skin-roughness');
+
+        skinClearcoat?.addEventListener('input', (e) => {
+            document.getElementById('skin-clearcoat-value').textContent = parseFloat(e.target.value).toFixed(2);
+            if (window.app?.renderer) {
+                app.renderer.updateMaterialSettings('skin', { clearcoat: parseFloat(e.target.value) });
+            }
         });
 
-        ['hair-anisotropy', 'hair-sheen', 'hair-roughness'].forEach(id => {
-            document.getElementById(id)?.addEventListener('input', (e) => {
-                document.getElementById(id + '-value').textContent = parseFloat(e.target.value).toFixed(2);
-                if (window.app?.renderer) {
-                    const prop = id.split('-')[1];
-                    app.renderer.updateMaterialSettings('hair', { [prop]: parseFloat(e.target.value) });
-                }
-            });
+        skinSheen?.addEventListener('input', (e) => {
+            document.getElementById('skin-sheen-value').textContent = parseFloat(e.target.value).toFixed(2);
+            if (window.app?.renderer) {
+                app.renderer.updateMaterialSettings('skin', { sheen: parseFloat(e.target.value) });
+            }
         });
 
-        document.getElementById('eyes-clearcoat')?.addEventListener('input', (e) => {
+        skinRoughness?.addEventListener('input', (e) => {
+            document.getElementById('skin-roughness-value').textContent = parseFloat(e.target.value).toFixed(2);
+            if (window.app?.renderer) {
+                app.renderer.updateMaterialSettings('skin', { roughness: parseFloat(e.target.value) });
+            }
+        });
+
+        // Hair sliders
+        const hairAnisotropy = document.getElementById('hair-anisotropy');
+        const hairSheen = document.getElementById('hair-sheen');
+        const hairRoughness = document.getElementById('hair-roughness');
+
+        hairAnisotropy?.addEventListener('input', (e) => {
+            document.getElementById('hair-anisotropy-value').textContent = parseFloat(e.target.value).toFixed(2);
+            if (window.app?.renderer) {
+                app.renderer.updateMaterialSettings('hair', { anisotropy: parseFloat(e.target.value) });
+            }
+        });
+
+        hairSheen?.addEventListener('input', (e) => {
+            document.getElementById('hair-sheen-value').textContent = parseFloat(e.target.value).toFixed(2);
+            if (window.app?.renderer) {
+                app.renderer.updateMaterialSettings('hair', { sheen: parseFloat(e.target.value) });
+            }
+        });
+
+        hairRoughness?.addEventListener('input', (e) => {
+            document.getElementById('hair-roughness-value').textContent = parseFloat(e.target.value).toFixed(2);
+            if (window.app?.renderer) {
+                app.renderer.updateMaterialSettings('hair', { roughness: parseFloat(e.target.value) });
+            }
+        });
+
+        // Eyes slider
+        const eyesClearcoat = document.getElementById('eyes-clearcoat');
+        eyesClearcoat?.addEventListener('input', (e) => {
             document.getElementById('eyes-clearcoat-value').textContent = parseFloat(e.target.value).toFixed(2);
             if (window.app?.renderer) {
                 app.renderer.updateMaterialSettings('eyes', { clearcoat: parseFloat(e.target.value) });
             }
         });
 
+        // Reset button
         document.getElementById('reset-materials-btn')?.addEventListener('click', () => {
-            const defaults = {
-                'skin-clearcoat': 0.04, 'skin-sheen': 0.25, 'skin-roughness': 0.55,
-                'hair-anisotropy': 0.4, 'hair-sheen': 0.2, 'hair-roughness': 0.45,
-                'eyes-clearcoat': 0.9
-            };
-            Object.entries(defaults).forEach(([id, val]) => {
-                document.getElementById(id).value = val;
-                document.getElementById(id + '-value').textContent = val.toFixed(2);
-            });
+            document.getElementById('skin-clearcoat').value = 0.04;
+            document.getElementById('skin-clearcoat-value').textContent = '0.04';
+            document.getElementById('skin-sheen').value = 0.25;
+            document.getElementById('skin-sheen-value').textContent = '0.25';
+            document.getElementById('skin-roughness').value = 0.55;
+            document.getElementById('skin-roughness-value').textContent = '0.55';
+
+            document.getElementById('hair-anisotropy').value = 0.4;
+            document.getElementById('hair-anisotropy-value').textContent = '0.40';
+            document.getElementById('hair-sheen').value = 0.2;
+            document.getElementById('hair-sheen-value').textContent = '0.20';
+            document.getElementById('hair-roughness').value = 0.45;
+            document.getElementById('hair-roughness-value').textContent = '0.45';
+
+            document.getElementById('eyes-clearcoat').value = 0.9;
+            document.getElementById('eyes-clearcoat-value').textContent = '0.90';
+
             if (window.app?.renderer) {
                 app.renderer.updateMaterialSettings('skin', { clearcoat: 0.04, sheen: 0.25, roughness: 0.55 });
                 app.renderer.updateMaterialSettings('hair', { anisotropy: 0.4, sheen: 0.2, roughness: 0.45 });
@@ -780,6 +860,7 @@
             }
         });
 
+        // Voice sliders
         document.getElementById('speed-slider')?.addEventListener('input', (e) => {
             document.getElementById('speed-value').textContent = parseFloat(e.target.value).toFixed(1) + '×';
         });
