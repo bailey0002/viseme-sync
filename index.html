@@ -622,7 +622,29 @@
             <!-- Collapsible Panels -->
             <div class="panel-group">
                 
-                <!-- Audio2Face Settings (NEW) -->
+                <!-- Avatar Settings -->
+                <div class="panel" id="avatar-panel">
+                    <div class="panel-header" onclick="togglePanel('avatar-panel')">
+                        <span class="panel-title">AVATAR</span>
+                        <span class="panel-toggle">▼</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="panel-inner">
+                            <div class="form-row">
+                                <div class="form-label"><label>MODEL</label></div>
+                                <select id="model-select">
+                                    <option value="assets/avatar.glb">Marcus (Male)</option>
+                                    <option value="assets/avatar_female.glb">Ava (Female)</option>
+                                </select>
+                            </div>
+                            <div id="model-loading" style="display: none; margin-top: 0.5rem;">
+                                <span class="loading-text" style="font-size: 0.7rem;">⋯ Loading model...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio2Face Settings -->
                 <div class="panel" id="a2f-panel">
                     <div class="panel-header" onclick="togglePanel('a2f-panel')">
                         <span class="panel-title">LIP-SYNC ENGINE</span>
@@ -696,12 +718,24 @@
                             <div class="form-row">
                                 <div class="form-label"><label>VOICE MODEL</label></div>
                                 <select id="voice-select">
-                                    <option value="en-US-AndrewMultilingualNeural">Andrew</option>
-                                    <option value="en-US-AvaMultilingualNeural">Ava</option>
-                                    <option value="en-US-BrianMultilingualNeural">Brian</option>
-                                    <option value="en-US-EmmaMultilingualNeural">Emma</option>
-                                    <option value="en-US-JennyNeural">Jenny</option>
-                                    <option value="en-US-GuyNeural">Guy</option>
+                                    <optgroup label="Male Voices">
+                                        <option value="en-US-AndrewMultilingualNeural">Andrew (Natural)</option>
+                                        <option value="en-US-BrianMultilingualNeural">Brian (Clear)</option>
+                                        <option value="en-US-GuyNeural">Guy (Deep)</option>
+                                        <option value="en-US-DavisNeural">Davis (Warm)</option>
+                                        <option value="en-US-JasonNeural">Jason (Conversational)</option>
+                                        <option value="en-US-TonyNeural">Tony (Casual)</option>
+                                    </optgroup>
+                                    <optgroup label="Female Voices">
+                                        <option value="en-US-AvaMultilingualNeural">Ava (Expressive)</option>
+                                        <option value="en-US-EmmaMultilingualNeural">Emma (Friendly)</option>
+                                        <option value="en-US-JennyNeural">Jenny (Professional)</option>
+                                        <option value="en-US-AriaNeural">Aria (Natural)</option>
+                                        <option value="en-US-SaraNeural">Sara (Cheerful)</option>
+                                        <option value="en-US-MichelleNeural">Michelle (Warm)</option>
+                                        <option value="en-US-NancyNeural">Nancy (Mature)</option>
+                                        <option value="en-US-JaneNeural">Jane (Articulate)</option>
+                                    </optgroup>
                                 </select>
                             </div>
                             <div class="form-row">
@@ -941,6 +975,59 @@
                 } catch (err) {
                     statusEl.textContent = `✗ ${err.message || 'Connection failed'}`;
                     statusEl.className = 'a2f-status disconnected';
+                }
+            });
+
+            // Model selector
+            document.getElementById('model-select')?.addEventListener('change', async (e) => {
+                const modelPath = e.target.value;
+                const loadingEl = document.getElementById('model-loading');
+                const selectEl = e.target;
+                const voiceSelect = document.getElementById('voice-select');
+                
+                // Show loading state
+                if (loadingEl) loadingEl.style.display = 'block';
+                selectEl.disabled = true;
+                
+                try {
+                    if (window.app?.renderer) {
+                        await window.app.renderer.loadModel(modelPath);
+                        
+                        // Re-initialize A2F client if active
+                        if (window.app.a2fClient && window.app.renderer.scene) {
+                            window.app.a2fClient.initializeWithScene(window.app.renderer.scene);
+                        }
+                        
+                        // Auto-switch voice to match avatar gender
+                        if (voiceSelect) {
+                            const isFemaleModel = modelPath.includes('female');
+                            const currentVoice = voiceSelect.value;
+                            
+                            // Female voices
+                            const femaleVoices = ['Ava', 'Emma', 'Jenny', 'Aria', 'Sara', 'Michelle', 'Nancy', 'Jane'];
+                            const isCurrentVoiceFemale = femaleVoices.some(v => currentVoice.includes(v));
+                            
+                            // Only switch if there's a mismatch
+                            if (isFemaleModel && !isCurrentVoiceFemale) {
+                                voiceSelect.value = 'en-US-AvaMultilingualNeural';
+                                voiceSelect.dispatchEvent(new Event('change'));
+                                console.log('Auto-switched to female voice: Ava');
+                            } else if (!isFemaleModel && isCurrentVoiceFemale) {
+                                voiceSelect.value = 'en-US-AndrewMultilingualNeural';
+                                voiceSelect.dispatchEvent(new Event('change'));
+                                console.log('Auto-switched to male voice: Andrew');
+                            }
+                        }
+                        
+                        console.log('Model switched to:', modelPath);
+                    }
+                } catch (err) {
+                    console.error('Failed to load model:', err);
+                    alert('Failed to load model: ' + err.message);
+                } finally {
+                    // Hide loading state
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    selectEl.disabled = false;
                 }
             });
 
