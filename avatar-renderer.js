@@ -1,7 +1,7 @@
 /**
  * Avatar Renderer
  * Handles Three.js scene setup, model loading, and rendering
- * 
+ *
  * UPGRADED: Realistic materials for all mesh types
  * - Skin: Clearcoat + sheen for natural oily/velvety look
  * - Eyes: High clearcoat + IOR for wet cornea
@@ -9,6 +9,12 @@
  * - Hair: Anisotropic highlights for strand-like reflections
  * - Eyelashes: Soft, non-shiny with rim lighting response
  * - Tongue: Wet, glossy mucous membrane look
+ * 
+ * FIXED (2025-01-29):
+ * - Jaw correction to fix underbite
+ * - Less sweaty skin
+ * - Reduced mouth glow (teeth/tongue)
+ * - Dark gray background
  */
 
 import * as THREE from 'three';
@@ -25,124 +31,121 @@ class AvatarRenderer {
         this.model = null;
         this.mixer = null;
         this.clock = new THREE.Clock();
-        
+
         // Performance tracking
         this.frameCount = 0;
         this.lastFpsUpdate = 0;
         this.currentFps = 0;
-        
+
         // Bone references for posing
         this.bones = {};
-        
+
         // Head mesh reference for expressions
         this.headMesh = null;
-        
+
         // Expression system
         this.expressionSystem = null;
-        
+
         // =====================================================
         // MATERIAL SETTINGS (all adjustable at runtime)
         // =====================================================
-        
         this.materialSettings = {
             enabled: true,  // Master toggle for all upgrades
-            
-            // SKIN (Head_Mesh, Body_Mesh)
+
+            // SKIN (Head_Mesh, Body_Mesh) - UPDATED: less sweaty, brighter
             skin: {
-                clearcoat: 0.04,            // Subtle oily sheen
-                clearcoatRoughness: 0.35,   // How diffuse the sheen is
-                sheen: 0.25,                // Soft light wrap (velvety)
+                clearcoat: 0.02,            // Reduced from 0.04 (less sweaty)
+                clearcoatRoughness: 0.35,
+                sheen: 0.15,                // Reduced from 0.25
                 sheenRoughness: 0.6,
-                sheenColor: new THREE.Color(0.95, 0.75, 0.65), // Warm undertone
-                roughness: 0.55,            // Base roughness
-                envMapIntensity: 0.8,
+                sheenColor: new THREE.Color(0.95, 0.75, 0.65),
+                roughness: 0.55,
+                envMapIntensity: 1.0,       // Increased from 0.8 (brighter)
             },
-            
+
             // EYES (Eye_Mesh)
             eyes: {
-                clearcoat: 0.9,             // Very wet/glossy
-                clearcoatRoughness: 0.05,   // Sharp reflections
-                roughness: 0.05,            // Glossy base
-                ior: 1.4,                   // Cornea refraction
-                envMapIntensity: 1.5,       // Strong reflections
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.05,
+                roughness: 0.05,
+                ior: 1.4,
+                envMapIntensity: 1.5,
             },
-            
-            // EYE AMBIENT OCCLUSION (EyeAO_Mesh) - shadow around eyes
+
+            // EYE AMBIENT OCCLUSION (EyeAO_Mesh)
             eyeAO: {
                 clearcoat: 0.02,
                 roughness: 0.7,
                 envMapIntensity: 0.3,
             },
-            
-            // TEETH (Teeth_Mesh)
+
+            // TEETH (Teeth_Mesh) - UPDATED: less glowy
             teeth: {
-                clearcoat: 0.25,            // Wet saliva
+                clearcoat: 0.1,             // Reduced from 0.25
                 clearcoatRoughness: 0.3,
-                roughness: 0.25,            // Enamel is fairly shiny
-                sheen: 0.1,                 // Subtle soft highlight
+                roughness: 0.4,             // Increased from 0.25
+                sheen: 0.1,
                 sheenRoughness: 0.5,
-                sheenColor: new THREE.Color(1.0, 0.98, 0.95), // Slight warm white
-                envMapIntensity: 0.6,
+                sheenColor: new THREE.Color(1.0, 0.98, 0.95),
+                envMapIntensity: 0.3,       // Reduced from 0.6
             },
-            
-            // TONGUE (Tongue_Mesh)
+
+            // TONGUE (Tongue_Mesh) - UPDATED: much less glowy
             tongue: {
-                clearcoat: 0.6,             // Very wet
+                clearcoat: 0.1,             // Reduced from 0.6
                 clearcoatRoughness: 0.15,
-                roughness: 0.3,
+                roughness: 0.7,             // Increased from 0.3
                 sheen: 0.2,
                 sheenRoughness: 0.4,
-                sheenColor: new THREE.Color(0.9, 0.5, 0.5), // Pinkish
-                envMapIntensity: 0.8,
+                sheenColor: new THREE.Color(0.9, 0.5, 0.5),
+                envMapIntensity: 0.1,       // Reduced from 0.8
             },
-            
+
             // HAIR (avaturn_hair_0, avaturn_hair_1)
             hair: {
-                // Anisotropy creates strand-like highlights
-                anisotropy: 0.4,            // Subtle strand effect
-                anisotropyRotation: 0,      // Will be set per-mesh based on UVs
-                roughness: 0.45,            // Slightly less shiny
-                sheen: 0.2,                 // Reduced secondary highlight
+                anisotropy: 0.4,
+                anisotropyRotation: 0,
+                roughness: 0.45,
+                sheen: 0.2,
                 sheenRoughness: 0.5,
-                sheenColor: null,           // Will match hair color from texture
-                clearcoat: 0.03,            // Very subtle top sheen
+                sheenColor: null,
+                clearcoat: 0.03,
                 clearcoatRoughness: 0.5,
                 envMapIntensity: 0.4,
             },
-            
+
             // EYELASHES (Eyelash_Mesh)
             eyelashes: {
-                roughness: 0.5,             // Not too shiny
-                sheen: 0.2,                 // Soft highlight
+                roughness: 0.5,
+                sheen: 0.2,
                 sheenRoughness: 0.6,
-                sheenColor: new THREE.Color(0.1, 0.08, 0.08), // Near black
-                clearcoat: 0.0,             // No clearcoat on lashes
+                sheenColor: new THREE.Color(0.1, 0.08, 0.08),
+                clearcoat: 0.0,
                 envMapIntensity: 0.3,
-                // Lashes need special alpha handling
                 alphaTest: 0.5,
                 transparent: true,
             },
         };
-        
+
         // Callbacks
         this.onLoad = null;
         this.onError = null;
-        
+
         this.init();
     }
 
     init() {
-        // Scene
+        // Scene - UPDATED: dark gray background
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x0a0a0a);
+        this.scene.background = new THREE.Color(0x1a1a1a);  // Changed from 0x0a0a0a
 
-        // Camera - positioned to frame a head/upper body
+        // Camera - positioned for full body view
         const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
         this.camera = new THREE.PerspectiveCamera(35, aspect, 0.1, 100);
-        this.camera.position.set(0, 1.6, 1.2);
-        this.camera.lookAt(0, 1.5, 0);
+        this.camera.position.set(0, 1.2, 2.2);
+        this.camera.lookAt(0, 1.2, 0);
 
-        // Renderer - enable features needed for physical materials
+        // Renderer
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             antialias: true,
@@ -153,13 +156,11 @@ class AvatarRenderer {
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.0;
-        
-        // Enable physical lights for proper PBR
         this.renderer.useLegacyLights = false;
 
         // Orbit Controls
         this.controls = new OrbitControls(this.camera, this.canvas);
-        this.controls.target.set(0, 1.5, 0);
+        this.controls.target.set(0, 1.2, 0);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
         this.controls.minDistance = 0.5;
@@ -167,10 +168,10 @@ class AvatarRenderer {
         this.controls.maxPolarAngle = Math.PI * 0.9;
         this.controls.update();
 
-        // Lighting (upgraded for realistic materials)
+        // Lighting
         this.setupLighting();
-        
-        // Environment map for reflections
+
+        // Environment map
         this.setupEnvironment();
 
         // Handle resize
@@ -181,35 +182,35 @@ class AvatarRenderer {
     }
 
     setupLighting() {
-        // Key light (main light, slightly warm)
-        const keyLight = new THREE.DirectionalLight(0xfff5e6, 2.0);
+        // Key light - UPDATED: brighter (2.5 from 2.0)
+        const keyLight = new THREE.DirectionalLight(0xfff5e6, 2.5);
         keyLight.position.set(2, 3, 2);
         this.scene.add(keyLight);
 
-        // Fill light (softer, cooler, from opposite side)
+        // Fill light
         const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.8);
         fillLight.position.set(-2, 2, 1);
         this.scene.add(fillLight);
 
-        // Rim/back light (for depth, hair edge highlight)
+        // Rim/back light
         const rimLight = new THREE.DirectionalLight(0xffffff, 0.8);
         rimLight.position.set(0, 2, -3);
         this.scene.add(rimLight);
-        
-        // Secondary rim for hair shine
+
+        // Secondary rim for hair
         const hairRim = new THREE.DirectionalLight(0xffe8d0, 0.4);
         hairRim.position.set(1.5, 2.5, -1);
         this.scene.add(hairRim);
 
-        // Ambient light (base illumination)
-        const ambientLight = new THREE.AmbientLight(0x404060, 0.4);
+        // Ambient light - UPDATED: slightly brighter (0.45 from 0.4)
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.45);
         this.scene.add(ambientLight);
 
-        // Hemisphere light for natural sky/ground bounce
+        // Hemisphere light
         const hemiLight = new THREE.HemisphereLight(0xffeeb1, 0x080820, 0.4);
         this.scene.add(hemiLight);
-        
-        // Face spotlight for catchlights in eyes
+
+        // Face spotlight
         const faceSpot = new THREE.SpotLight(0xffffff, 0.5);
         faceSpot.position.set(0.5, 2, 1.5);
         faceSpot.angle = Math.PI / 6;
@@ -218,22 +219,17 @@ class AvatarRenderer {
         this.scene.add(faceSpot);
         this.scene.add(faceSpot.target);
     }
-    
-    /**
-     * Create environment map for reflections
-     * Gradient simulates studio lighting without external HDR
-     */
+
     setupEnvironment() {
         const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
         pmremGenerator.compileEquirectangularShader();
-        
+
         const envScene = new THREE.Scene();
-        
-        // Gradient: warm top, neutral middle, dark bottom
+
         const topColor = new THREE.Color(0.6, 0.55, 0.5);
         const bottomColor = new THREE.Color(0.1, 0.1, 0.15);
         const middleColor = new THREE.Color(0.3, 0.3, 0.35);
-        
+
         const envGeom = new THREE.SphereGeometry(50, 32, 32);
         const envMat = new THREE.ShaderMaterial({
             side: THREE.BackSide,
@@ -267,49 +263,45 @@ class AvatarRenderer {
                 }
             `
         });
-        
+
         const envMesh = new THREE.Mesh(envGeom, envMat);
         envScene.add(envMesh);
-        
+
         const envMap = pmremGenerator.fromScene(envScene, 0.04).texture;
         this.scene.environment = envMap;
-        
+
         pmremGenerator.dispose();
         envGeom.dispose();
         envMat.dispose();
-        
+
         console.log('Environment map created');
     }
 
-    /**
-     * Load a GLB model
-     */
     async loadModel(url) {
         return new Promise((resolve, reject) => {
             const loader = new GLTFLoader();
-            
+
             loader.load(
                 url,
                 (gltf) => {
                     console.log('Model loaded:', gltf);
-                    
+
                     if (this.model) {
                         this.scene.remove(this.model);
                     }
 
                     this.model = gltf.scene;
-                    
+
                     // Center and position
                     const box = new THREE.Box3().setFromObject(this.model);
                     const center = box.getCenter(new THREE.Vector3());
-                    
                     this.model.position.x = -center.x;
                     this.model.position.z = -center.z;
                     this.model.position.y = -box.min.y;
-                    
+
                     this.scene.add(this.model);
 
-                    // Build morphTargetDictionary from userData.targetNames
+                    // Build morphTargetDictionary
                     this.model.traverse((node) => {
                         if (node.isMesh) {
                             if (node.userData?.targetNames && Array.isArray(node.userData.targetNames)) {
@@ -317,7 +309,6 @@ class AvatarRenderer {
                                 node.userData.targetNames.forEach((name, index) => {
                                     node.morphTargetDictionary[name] = index;
                                 });
-                                
                                 const visemes = Object.keys(node.morphTargetDictionary).filter(k => k.includes('viseme'));
                                 if (visemes.length > 0) {
                                     console.log(`Built morphTargetDictionary for ${node.name}: ${visemes.length} visemes`);
@@ -325,9 +316,12 @@ class AvatarRenderer {
                             }
                         }
                     });
-                    
+
                     // UPGRADE ALL MATERIALS
                     this.upgradeMaterials();
+
+                    // APPLY JAW CORRECTION (NEW)
+                    this.applyJawCorrection(0.7);
 
                     // Animation mixer
                     if (gltf.animations && gltf.animations.length > 0) {
@@ -344,13 +338,13 @@ class AvatarRenderer {
                             console.warn('No visemes found in model');
                         }
                     }
-                    
+
                     if (window.BlendShapeMapper) {
                         window.BlendShapeMapper.initialize(this.model);
                     }
 
                     this.setupBones();
-                    
+
                     // Store head mesh reference
                     this.model.traverse((node) => {
                         if (node.name === 'Head_Mesh') {
@@ -358,7 +352,7 @@ class AvatarRenderer {
                             window.headMesh = node;
                         }
                     });
-                    
+
                     // Initialize expression system
                     this.expressionSystem = new ExpressionSystem(this.headMesh);
                     this.expressionSystem.start();
@@ -378,18 +372,54 @@ class AvatarRenderer {
             );
         });
     }
-    
+
     /**
-     * MASTER MATERIAL UPGRADE FUNCTION
-     * Routes each mesh to appropriate material handler
+     * Apply inverse jawForward to base geometry to fix underbite
+     * @param {number} strength - How much to pull jaw back (0-1)
      */
+    applyJawCorrection(strength = 0.7) {
+        const applyToMesh = (mesh) => {
+            if (!mesh || !mesh.geometry || !mesh.morphTargetDictionary) return false;
+
+            const geo = mesh.geometry;
+            const posAttr = geo.attributes.position;
+            const jawIdx = mesh.morphTargetDictionary['jawForward'];
+
+            if (jawIdx === undefined || !geo.morphAttributes.position) return false;
+
+            const jawMorph = geo.morphAttributes.position[jawIdx];
+            if (!jawMorph) return false;
+
+            // Subtract the morph delta from base positions
+            for (let i = 0; i < posAttr.count; i++) {
+                posAttr.array[i * 3] -= jawMorph.array[i * 3] * strength;
+                posAttr.array[i * 3 + 1] -= jawMorph.array[i * 3 + 1] * strength;
+                posAttr.array[i * 3 + 2] -= jawMorph.array[i * 3 + 2] * strength;
+            }
+
+            posAttr.needsUpdate = true;
+            geo.computeVertexNormals();
+            return true;
+        };
+
+        let headMesh = null, teethMesh = null;
+        this.model.traverse(obj => {
+            if (obj.name === 'Head_Mesh') headMesh = obj;
+            if (obj.name === 'Teeth_Mesh') teethMesh = obj;
+        });
+
+        const headResult = applyToMesh(headMesh);
+        const teethResult = applyToMesh(teethMesh);
+
+        console.log(`Jaw correction applied (strength ${strength}): head=${headResult}, teeth=${teethResult}`);
+    }
+
     upgradeMaterials() {
         if (!this.materialSettings.enabled) {
             console.log('Material upgrades disabled');
             return;
         }
-        
-        // Mesh name → upgrade function mapping
+
         const meshHandlers = {
             'Head_Mesh': (mesh) => this.upgradeSkinMaterial(mesh),
             'Body_Mesh': (mesh) => this.upgradeSkinMaterial(mesh),
@@ -399,370 +429,266 @@ class AvatarRenderer {
             'Tongue_Mesh': (mesh) => this.upgradeTongueMaterial(mesh),
             'Eyelash_Mesh': (mesh) => this.upgradeEyelashMaterial(mesh),
         };
-        
-        // Hair meshes (may have numbered variants)
+
         const isHairMesh = (name) => name.startsWith('avaturn_hair');
-        
+
         this.model.traverse((node) => {
             if (!node.isMesh) return;
-            
+
             const handler = meshHandlers[node.name];
-            
             if (handler) {
                 handler(node);
             } else if (isHairMesh(node.name)) {
                 this.upgradeHairMaterial(node);
             } else {
-                // Other meshes (clothes, accessories): just enable morph targets
                 this.upgradeGenericMaterial(node);
             }
         });
-        
+
         console.log('All materials upgraded');
     }
-    
-    /**
-     * SKIN: Head and Body
-     * Clearcoat for oil, sheen for velvet softness
-     */
+
     upgradeSkinMaterial(mesh) {
         const oldMat = mesh.material;
         const s = this.materialSettings.skin;
-        
+
         const newMat = new THREE.MeshPhysicalMaterial({
-            // Preserve existing textures
             map: oldMat.map,
             normalMap: oldMat.normalMap,
             roughnessMap: oldMat.roughnessMap,
             metalnessMap: oldMat.metalnessMap,
             aoMap: oldMat.aoMap,
-            
-            // Base properties
             color: oldMat.color || new THREE.Color(1, 1, 1),
             metalness: 0.0,
             roughness: s.roughness,
-            
-            // Skin-specific: oily sheen
             clearcoat: s.clearcoat,
             clearcoatRoughness: s.clearcoatRoughness,
-            
-            // Skin-specific: soft light diffusion
             sheen: s.sheen,
             sheenRoughness: s.sheenRoughness,
             sheenColor: s.sheenColor,
-            
-            // Environment
             envMapIntensity: s.envMapIntensity,
-            
-            // Preserve settings
             normalScale: oldMat.normalScale || new THREE.Vector2(1, 1),
             side: oldMat.side || THREE.FrontSide,
             transparent: oldMat.transparent || false,
             alphaTest: oldMat.alphaTest || 0,
-            
-            // Morph targets
             morphTargets: true,
             morphNormals: true,
         });
-        
+
         mesh.material = newMat;
         mesh.material.needsUpdate = true;
         oldMat.dispose();
-        
+
         console.log(`✓ ${mesh.name}: Skin material`);
     }
-    
-    /**
-     * EYES: Wet, glossy cornea with refraction
-     */
+
     upgradeEyeMaterial(mesh) {
         const oldMat = mesh.material;
         const s = this.materialSettings.eyes;
-        
+
         const newMat = new THREE.MeshPhysicalMaterial({
             map: oldMat.map,
             normalMap: oldMat.normalMap,
             roughnessMap: oldMat.roughnessMap,
-            
             color: oldMat.color || new THREE.Color(1, 1, 1),
             metalness: 0.0,
             roughness: s.roughness,
-            
-            // High clearcoat for wet look
             clearcoat: s.clearcoat,
             clearcoatRoughness: s.clearcoatRoughness,
-            
-            // Refraction
             ior: s.ior,
-            
-            // Strong reflections
             envMapIntensity: s.envMapIntensity,
-            
             side: oldMat.side || THREE.FrontSide,
             transparent: oldMat.transparent || false,
-            
             morphTargets: true,
             morphNormals: true,
         });
-        
+
         mesh.material = newMat;
         mesh.material.needsUpdate = true;
         oldMat.dispose();
-        
+
         console.log(`✓ ${mesh.name}: Eye material`);
     }
-    
-    /**
-     * EYE AO: Shadow/depth around eyes
-     */
+
     upgradeEyeAOMaterial(mesh) {
         const oldMat = mesh.material;
         const s = this.materialSettings.eyeAO;
-        
+
         const newMat = new THREE.MeshPhysicalMaterial({
             map: oldMat.map,
             normalMap: oldMat.normalMap,
             roughnessMap: oldMat.roughnessMap,
-            
             color: oldMat.color || new THREE.Color(1, 1, 1),
             metalness: 0.0,
             roughness: s.roughness,
-            
             clearcoat: s.clearcoat,
             envMapIntensity: s.envMapIntensity,
-            
             side: oldMat.side || THREE.DoubleSide,
             transparent: oldMat.transparent || true,
             alphaMap: oldMat.alphaMap,
             alphaTest: oldMat.alphaTest || 0,
-            
             morphTargets: true,
             morphNormals: true,
         });
-        
+
         mesh.material = newMat;
         mesh.material.needsUpdate = true;
         oldMat.dispose();
-        
+
         console.log(`✓ ${mesh.name}: Eye AO material`);
     }
-    
-    /**
-     * TEETH: Wet enamel with subtle translucency feel
-     */
+
     upgradeTeethMaterial(mesh) {
         const oldMat = mesh.material;
         const s = this.materialSettings.teeth;
-        
+
         const newMat = new THREE.MeshPhysicalMaterial({
             map: oldMat.map,
             normalMap: oldMat.normalMap,
             roughnessMap: oldMat.roughnessMap,
             aoMap: oldMat.aoMap,
-            
             color: oldMat.color || new THREE.Color(1, 1, 1),
             metalness: 0.0,
             roughness: s.roughness,
-            
-            // Wet saliva
             clearcoat: s.clearcoat,
             clearcoatRoughness: s.clearcoatRoughness,
-            
-            // Soft highlight
             sheen: s.sheen,
             sheenRoughness: s.sheenRoughness,
             sheenColor: s.sheenColor,
-            
             envMapIntensity: s.envMapIntensity,
-            
             side: THREE.DoubleSide,
-            
             morphTargets: true,
             morphNormals: true,
         });
-        
+
         mesh.material = newMat;
         mesh.material.needsUpdate = true;
         oldMat.dispose();
-        
+
         console.log(`✓ ${mesh.name}: Teeth material`);
     }
-    
-    /**
-     * TONGUE: Wet mucous membrane
-     */
+
     upgradeTongueMaterial(mesh) {
         const oldMat = mesh.material;
         const s = this.materialSettings.tongue;
-        
+
         const newMat = new THREE.MeshPhysicalMaterial({
             map: oldMat.map,
             normalMap: oldMat.normalMap,
             roughnessMap: oldMat.roughnessMap,
-            
             color: oldMat.color || new THREE.Color(1, 1, 1),
             metalness: 0.0,
             roughness: s.roughness,
-            
-            // Very wet
             clearcoat: s.clearcoat,
             clearcoatRoughness: s.clearcoatRoughness,
-            
-            // Pink undertone
             sheen: s.sheen,
             sheenRoughness: s.sheenRoughness,
             sheenColor: s.sheenColor,
-            
             envMapIntensity: s.envMapIntensity,
-            
             side: THREE.DoubleSide,
-            
             morphTargets: true,
             morphNormals: true,
         });
-        
+
         mesh.material = newMat;
         mesh.material.needsUpdate = true;
         oldMat.dispose();
-        
+
         console.log(`✓ ${mesh.name}: Tongue material`);
     }
-    
-    /**
-     * HAIR: Anisotropic highlights for strand-like reflections
-     */
+
     upgradeHairMaterial(mesh) {
         const oldMat = mesh.material;
         const s = this.materialSettings.hair;
-        
-        // Try to extract hair color from texture or existing material
+
         let hairColor = oldMat.color ? oldMat.color.clone() : new THREE.Color(0.15, 0.1, 0.08);
-        
-        // Sheen color should complement hair color (slightly lighter/warmer)
         const sheenColor = s.sheenColor || hairColor.clone().lerp(new THREE.Color(1, 0.9, 0.8), 0.3);
-        
+
         const newMat = new THREE.MeshPhysicalMaterial({
             map: oldMat.map,
             normalMap: oldMat.normalMap,
             roughnessMap: oldMat.roughnessMap,
             alphaMap: oldMat.alphaMap,
-            
             color: hairColor,
             metalness: 0.0,
             roughness: s.roughness,
-            
-            // ANISOTROPY: Key for hair strand highlights
             anisotropy: s.anisotropy,
             anisotropyRotation: s.anisotropyRotation,
-            
-            // Secondary soft highlight
             sheen: s.sheen,
             sheenRoughness: s.sheenRoughness,
             sheenColor: sheenColor,
-            
-            // Very subtle top sheen
             clearcoat: s.clearcoat,
             clearcoatRoughness: s.clearcoatRoughness,
-            
             envMapIntensity: s.envMapIntensity,
-            
-            // Hair needs proper alpha handling
             transparent: true,
             alphaTest: oldMat.alphaTest || 0.5,
             side: THREE.DoubleSide,
             depthWrite: true,
-            
             morphTargets: true,
             morphNormals: true,
         });
-        
+
         mesh.material = newMat;
         mesh.material.needsUpdate = true;
-        
-        // Render order: hair should render after opaque meshes
         mesh.renderOrder = 1;
-        
+
         oldMat.dispose();
-        
+
         console.log(`✓ ${mesh.name}: Hair material (anisotropic)`);
     }
-    
-    /**
-     * EYELASHES: Soft, non-shiny with good alpha
-     */
+
     upgradeEyelashMaterial(mesh) {
         const oldMat = mesh.material;
         const s = this.materialSettings.eyelashes;
-        
+
         const newMat = new THREE.MeshPhysicalMaterial({
             map: oldMat.map,
             normalMap: oldMat.normalMap,
             alphaMap: oldMat.alphaMap,
-            
-            color: oldMat.color || new THREE.Color(0.05, 0.03, 0.03), // Near black
+            color: oldMat.color || new THREE.Color(0.05, 0.03, 0.03),
             metalness: 0.0,
             roughness: s.roughness,
-            
-            // Soft highlight only
             sheen: s.sheen,
             sheenRoughness: s.sheenRoughness,
             sheenColor: s.sheenColor,
-            
             clearcoat: s.clearcoat,
             envMapIntensity: s.envMapIntensity,
-            
-            // Alpha handling
             transparent: s.transparent,
             alphaTest: s.alphaTest,
             side: THREE.DoubleSide,
             depthWrite: true,
-            
             morphTargets: true,
             morphNormals: true,
         });
-        
+
         mesh.material = newMat;
         mesh.material.needsUpdate = true;
-        
-        // Render after hair
         mesh.renderOrder = 2;
-        
+
         oldMat.dispose();
-        
+
         console.log(`✓ ${mesh.name}: Eyelash material`);
     }
-    
-    /**
-     * GENERIC: Clothes, accessories, glasses, etc.
-     * Just enable morph targets, keep original look
-     */
+
     upgradeGenericMaterial(mesh) {
         if (mesh.morphTargetInfluences) {
             mesh.material.morphTargets = true;
             mesh.material.morphNormals = true;
             mesh.material.needsUpdate = true;
         }
-        
-        // Slight env map for better integration
+
         if (mesh.material.isMeshStandardMaterial) {
             mesh.material.envMapIntensity = 0.5;
         }
-        
+
         console.log(`  ${mesh.name}: Generic (morph targets enabled)`);
     }
-    
-    /**
-     * Update specific material settings at runtime
-     * @param {string} category - 'skin', 'eyes', 'teeth', 'tongue', 'hair', 'eyelashes'
-     * @param {object} settings - Properties to update
-     */
+
     updateMaterialSettings(category, settings) {
-        // Update stored settings
         if (this.materialSettings[category]) {
             Object.assign(this.materialSettings[category], settings);
         }
-        
-        // Find and update meshes
+
         const categoryMeshes = {
             skin: ['Head_Mesh', 'Body_Mesh'],
             eyes: ['Eye_Mesh'],
@@ -770,23 +696,22 @@ class AvatarRenderer {
             teeth: ['Teeth_Mesh'],
             tongue: ['Tongue_Mesh'],
             eyelashes: ['Eyelash_Mesh'],
-            hair: [], // Will match by prefix
+            hair: [],
         };
-        
+
         const targetMeshes = categoryMeshes[category] || [];
         const isHairCategory = category === 'hair';
-        
+
         this.model?.traverse((node) => {
             if (!node.isMesh) return;
-            
-            const isTarget = targetMeshes.includes(node.name) || 
-                            (isHairCategory && node.name.startsWith('avaturn_hair'));
-            
+
+            const isTarget = targetMeshes.includes(node.name) ||
+                (isHairCategory && node.name.startsWith('avaturn_hair'));
+
             if (isTarget && node.material.isMeshPhysicalMaterial) {
                 const mat = node.material;
                 const s = this.materialSettings[category];
-                
-                // Apply common properties
+
                 if (s.clearcoat !== undefined) mat.clearcoat = s.clearcoat;
                 if (s.clearcoatRoughness !== undefined) mat.clearcoatRoughness = s.clearcoatRoughness;
                 if (s.roughness !== undefined) mat.roughness = s.roughness;
@@ -797,35 +722,33 @@ class AvatarRenderer {
                 if (s.anisotropy !== undefined) mat.anisotropy = s.anisotropy;
                 if (s.anisotropyRotation !== undefined) mat.anisotropyRotation = s.anisotropyRotation;
                 if (s.ior !== undefined) mat.ior = s.ior;
-                
+
                 mat.needsUpdate = true;
             }
         });
-        
+
         console.log(`Updated ${category} settings:`, settings);
     }
 
-    /**
-     * Adjust camera to show head and shoulders
-     */
     focusOnFace() {
         if (!this.model) return;
 
         const box = new THREE.Box3().setFromObject(this.model);
         const height = box.max.y - box.min.y;
-        const faceY = height * 0.88;
+        
+        // Target chest/upper body area (about 65% up from ground)
+        const targetY = height * 0.65;
 
-        // Model faces forward (no rotation needed for this model)
         this.model.rotation.y = 0;
-        
-        this.camera.position.set(0, faceY, 0.65);
-        this.controls.target.set(0, faceY, 0);
-        
+
+        // Camera: centered (x=0), at chest height, pulled back (z=2.2) for wider shot
+        this.camera.position.set(0, targetY, 2.2);
+        this.controls.target.set(0, targetY, 0);
         this.camera.up.set(0, 1, 0);
-        this.camera.lookAt(0, faceY, 0);
-        
+        this.camera.lookAt(0, targetY, 0);
         this.controls.update();
-        console.log('Camera positioned for head/shoulder view');
+
+        console.log('Camera positioned for full body view');
     }
 
     setupBones() {
@@ -834,13 +757,12 @@ class AvatarRenderer {
                 this.bones[node.name] = node;
             }
         });
-        
+
         console.log('Found bones:', Object.keys(this.bones).length);
         this.positionArms();
     }
 
     positionArms() {
-        // Relaxed pose - shoulders dropped, arms at sides
         if (this.bones.LeftShoulder) {
             this.bones.LeftShoulder.rotation.set(1.6, 0, -1.3);
         }
@@ -859,7 +781,7 @@ class AvatarRenderer {
         if (this.bones.RightForeArm) {
             this.bones.RightForeArm.rotation.set(0, 0, 0);
         }
-        
+
         console.log('Arms positioned: relaxed pose');
     }
 
@@ -921,7 +843,7 @@ class ExpressionSystem {
         this.blinkInterval = null;
         this.microExpressionInterval = null;
         this.currentExpressions = {};
-        
+
         this.expressions = {
             eyeBlinkLeft: 'eyeBlinkLeft',
             eyeBlinkRight: 'eyeBlinkRight',
@@ -950,11 +872,10 @@ class ExpressionSystem {
             console.warn('ExpressionSystem: No head mesh or morph targets available');
             return;
         }
-        
+
         this.isRunning = true;
         this.startBlinking();
         this.startMicroExpressions();
-        
         console.log('ExpressionSystem started');
     }
 
@@ -967,15 +888,15 @@ class ExpressionSystem {
     startBlinking() {
         const blink = () => {
             if (!this.isRunning) return;
-            
+
             this.animateExpression(['eyeBlinkLeft', 'eyeBlinkRight'], 1.0, 150, () => {
                 this.animateExpression(['eyeBlinkLeft', 'eyeBlinkRight'], 0, 100);
             });
-            
+
             const nextBlink = 2000 + Math.random() * 4000;
             this.blinkInterval = setTimeout(blink, nextBlink);
         };
-        
+
         this.blinkInterval = setTimeout(blink, 1000 + Math.random() * 2000);
     }
 
@@ -1006,43 +927,44 @@ class ExpressionSystem {
 
         const doMicroExpression = () => {
             if (!this.isRunning) return;
-            
+
             const expr = microExpressions[Math.floor(Math.random() * microExpressions.length)];
             expr();
-            
+
             const nextExpr = 3000 + Math.random() * 5000;
             this.microExpressionInterval = setTimeout(doMicroExpression, nextExpr);
         };
-        
+
         this.microExpressionInterval = setTimeout(doMicroExpression, 2000 + Math.random() * 2000);
     }
 
     animateExpression(names, targetValue, duration, onComplete) {
         if (!this.headMesh) return;
-        
+
         const dict = this.headMesh.morphTargetDictionary;
         const influences = this.headMesh.morphTargetInfluences;
-        
+
         names.forEach(name => {
             if (dict[name] === undefined) return;
-            
+
             const idx = dict[name];
             const startValue = influences[idx];
             const startTime = performance.now();
-            
+
             const animate = () => {
                 const elapsed = performance.now() - startTime;
                 const t = Math.min(elapsed / duration, 1);
                 const eased = 1 - Math.pow(1 - t, 2);
+
                 influences[idx] = startValue + (targetValue - startValue) * eased;
-                
+
                 if (t < 1) {
                     requestAnimationFrame(animate);
                 } else if (onComplete) {
                     onComplete();
                 }
             };
-            
+
             requestAnimationFrame(animate);
         });
     }

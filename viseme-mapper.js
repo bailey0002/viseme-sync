@@ -2,9 +2,10 @@
  * Oculus Viseme Mapper
  * Maps Azure Speech Viseme IDs (0-21) to Oculus/Avaturn viseme blendshapes
  * 
- * Now includes:
+ * UPDATED (2025-01-29):
+ * - Smoother viseme transitions (blend factor 0.15, intensity 0.8)
  * - Teeth mesh synchronization
- * - Underbite correction (jawForward dampening)
+ * - Jaw correction support
  */
 
 const VisemeMapper = {
@@ -46,14 +47,14 @@ const VisemeMapper = {
 
     // Correction settings
     corrections: {
-        jawForwardDampen: 0.3,      // Reduce jawForward by 70% to fix underbite
-        jawBackwardBias: 0.05,      // Slight backward bias on jaw
-        teethSync: true             // Sync teeth with head
+        jawForwardDampen: 0.3,
+        jawBackwardBias: 0.05,
+        teethSync: true
     },
 
     // Cache for mesh data
     meshMappings: new Map(),
-    
+
     // Specific mesh references
     headMesh: null,
     teethMesh: null,
@@ -148,7 +149,7 @@ const VisemeMapper = {
     applyViseme(visemeName, intensity = 1.0) {
         // Reset all visemes
         this.OCULUS_VISEMES.forEach(v => this.targetInfluences[v] = 0);
-        
+
         // Set target viseme
         this.targetInfluences[visemeName] = intensity;
 
@@ -158,19 +159,21 @@ const VisemeMapper = {
     },
 
     /**
-     * Smoothly blend to a viseme
+     * Smoothly blend to a viseme (UPDATED: smoother transitions)
      */
-    blendToViseme(visemeId, blendFactor = 0.3, intensity = 1.0) {
+    blendToViseme(visemeId, blendFactor = 0.15, intensity = 0.8) {
         const targetViseme = this.AZURE_TO_OCULUS[visemeId];
         if (!targetViseme) return;
 
-        // Update target influences with blending
+        // Smoother exponential decay for other visemes
         this.OCULUS_VISEMES.forEach(v => {
             const target = (v === targetViseme) ? intensity : 0;
+            // Smooth interpolation with lower blend factor
             this.targetInfluences[v] += (target - this.targetInfluences[v]) * blendFactor;
+            // Clamp very small values to 0
+            if (this.targetInfluences[v] < 0.01) this.targetInfluences[v] = 0;
         });
 
-        // Apply to all meshes
         this._applyToMeshes();
         this.currentViseme = targetViseme;
     },
@@ -189,7 +192,7 @@ const VisemeMapper = {
                 }
             });
 
-            // Apply underbite correction: dampen jawForward
+            // Apply jaw forward dampening
             if (jawIndices['jawForward'] !== undefined) {
                 const currentValue = influences[jawIndices['jawForward']] || 0;
                 influences[jawIndices['jawForward']] = currentValue * this.corrections.jawForwardDampen;
@@ -218,12 +221,12 @@ const VisemeMapper = {
 
             if (headIdx !== undefined && teethIdx !== undefined) {
                 let value = headData.influences[headIdx];
-                
-                // Apply jawForward correction
+
+                // Apply jaw forward correction
                 if (jawName === 'jawForward') {
                     value *= this.corrections.jawForwardDampen;
                 }
-                
+
                 teethData.influences[teethIdx] = value;
             }
         });
@@ -244,7 +247,7 @@ const VisemeMapper = {
      */
     reset() {
         this.OCULUS_VISEMES.forEach(v => this.targetInfluences[v] = 0);
-        
+
         this.meshMappings.forEach((meshData) => {
             const { visemeIndices, influences } = meshData;
             this.OCULUS_VISEMES.forEach(v => {
@@ -253,7 +256,7 @@ const VisemeMapper = {
                 }
             });
         });
-        
+
         this.currentViseme = null;
     },
 
