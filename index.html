@@ -1,885 +1,595 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Vestis — Grey Stratum</title>
-    <link rel="icon" href="data:,">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-
-```
-<!-- Azure Speech SDK -->
-<script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
-
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-    
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    :root {
-        --bg-primary: #0a0a0a;
-        --bg-secondary: #111111;
-        --bg-card: rgba(255, 255, 255, 0.02);
-        --bg-card-hover: rgba(255, 255, 255, 0.04);
-        --border-color: rgba(255, 255, 255, 0.08);
-        --border-hover: rgba(255, 255, 255, 0.15);
-        --text-primary: rgba(255, 255, 255, 0.9);
-        --text-secondary: rgba(255, 255, 255, 0.5);
-        --text-muted: rgba(255, 255, 255, 0.3);
-        --accent: rgba(255, 255, 255, 0.7);
-        --accent-glow: rgba(255, 255, 255, 0.1);
-        --success: #4ade80;
-        --error: #f87171;
-        --info: #60a5fa;
-    }
-    
-    body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        min-height: 100vh;
-        line-height: 1.6;
-        overflow-x: hidden;
-    }
-    
-    /* Navigation */
-    nav {
-        position: fixed;
-        top: 0; left: 0; right: 0;
-        z-index: 1000;
-        padding: 1rem 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: linear-gradient(to bottom, var(--bg-primary), transparent);
-    }
-    
-    .logo {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.75rem;
-        font-weight: 500;
-        letter-spacing: 0.15em;
-        color: var(--text-muted);
-        text-decoration: none;
-        transition: color 0.3s ease;
-    }
-    
-    .logo:hover { color: var(--text-secondary); }
-    
-    .nav-links {
-        display: flex;
-        gap: 1.5rem;
-        align-items: center;
-    }
-    
-    .nav-links a {
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        text-decoration: none;
-        letter-spacing: 0.05em;
-        transition: color 0.2s ease;
-    }
-    
-    .nav-links a:hover { color: var(--text-secondary); }
-    
-    @media (max-width: 480px) {
-        .nav-links { display: none; }
-    }
-    
-    /* Main Layout */
-    .main-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 60px 1rem 2rem;
-        min-height: 100vh;
-    }
-    
-    /* Avatar Container */
-    .avatar-container {
-        width: 100%;
-        max-width: 700px;
-        aspect-ratio: 3/4;
-        position: relative;
-        background: radial-gradient(ellipse at center, rgba(30, 30, 30, 0.5) 0%, transparent 70%);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    
-    @media (max-width: 480px) {
-        .avatar-container {
-            max-width: 100%;
-            aspect-ratio: 1/1;
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    }
-    
-    #avatar-canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-    }
-    
-    .loading-overlay {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: var(--bg-primary);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-        z-index: 10;
-        transition: opacity 0.5s ease;
-    }
-    
-    .loading-overlay.hidden {
-        opacity: 0;
-        pointer-events: none;
-    }
-    
-    .spinner {
-        width: 30px;
-        height: 30px;
-        border: 1px solid var(--border-color);
-        border-top-color: var(--text-secondary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin { to { transform: rotate(360deg); } }
-    
-    .loading-text {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        letter-spacing: 0.1em;
-    }
-    
-    /* Controls Container */
-    .controls-container {
-        width: 100%;
-        max-width: 700px;
-        margin-top: 1rem;
-    }
-    
-    /* Chat Input */
-    .chat-input-container {
-        display: flex;
-        gap: 0.5rem;
-        padding: 0.75rem;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-    }
-    
-    .chat-input-container textarea {
-        flex: 1;
-        background: transparent;
-        border: none;
-        color: var(--text-primary);
-        font-family: 'Inter', sans-serif;
-        font-size: 0.9rem;
-        resize: none;
-        outline: none;
-        min-height: 24px;
-        max-height: 100px;
-    }
-    
-    .chat-input-container textarea::placeholder {
-        color: var(--text-muted);
-    }
-    
-    .input-btn {
-        width: 36px;
-        height: 36px;
-        background: transparent;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        color: var(--text-secondary);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-        font-size: 1rem;
-    }
-    
-    .input-btn:hover {
-        border-color: var(--text-secondary);
-        color: var(--text-primary);
-    }
-    
-    .input-btn.recording {
-        border-color: #ff4444;
-        color: #ff4444;
-        animation: pulse 1.5s infinite;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    
-    /* Status Bar */
-    .status-bar {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 0;
-        margin-top: 0.5rem;
-    }
-    
-    .status-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--text-muted);
-    }
-    
-    .status-dot.connected { background: #22d3ee; }
-    .status-dot.speaking { background: var(--info); animation: pulse 1s infinite; }
-    .status-dot.error { background: var(--error); }
-    
-    .status-text {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        letter-spacing: 0.05em;
-    }
-    
-    /* Panels */
-    .panel-group {
-        margin-top: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .panel {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        overflow: hidden;
-    }
-    
-    .panel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        transition: background 0.2s ease;
-    }
-    
-    .panel-header:hover { background: var(--bg-card-hover); }
-    
-    .panel-title {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-        letter-spacing: 0.1em;
-    }
-    
-    .panel-toggle {
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        transition: transform 0.2s ease;
-    }
-    
-    .panel.open .panel-toggle { transform: rotate(180deg); }
-    
-    .panel-content {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
-    }
-    
-    .panel.open .panel-content { max-height: 600px; }
-    
-    .panel-inner {
-        padding: 0.75rem 1rem;
-        border-top: 1px solid var(--border-color);
-    }
-    
-    /* Form Elements */
-    .form-row {
-        margin-bottom: 0.75rem;
-    }
-    
-    .form-row:last-child { margin-bottom: 0; }
-    
-    .form-label {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.25rem;
-    }
-    
-    .form-label label {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        letter-spacing: 0.05em;
-    }
-    
-    .form-label .value {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
-        color: var(--text-secondary);
-    }
-    
-    input[type="text"],
-    input[type="password"],
-    select {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        color: var(--text-primary);
-        font-family: 'Inter', sans-serif;
-        font-size: 0.8rem;
-        outline: none;
-        transition: border-color 0.2s ease;
-    }
-    
-    input[type="text"]:focus,
-    input[type="password"]:focus,
-    select:focus {
-        border-color: var(--text-secondary);
-    }
-    
-    input[type="range"] {
-        width: 100%;
-        -webkit-appearance: none;
-        height: 4px;
-        background: var(--border-color);
-        border: none;
-        border-radius: 2px;
-    }
-    
-    input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 12px;
-        height: 12px;
-        background: var(--text-secondary);
-        border-radius: 50%;
-        cursor: pointer;
-    }
-    
-    input[type="range"]::-webkit-slider-thumb:hover {
-        background: var(--text-primary);
-    }
-    
-    /* Buttons */
-    .btn {
-        width: 100%;
-        padding: 0.6rem 1rem;
-        background: transparent;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        color: var(--text-secondary);
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.75rem;
-        letter-spacing: 0.1em;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    
-    .btn:hover {
-        border-color: var(--text-secondary);
-        color: var(--text-primary);
-    }
-    
-    .btn-small {
-        padding: 0.4rem 0.75rem;
-        font-size: 0.7rem;
-    }
-    
-    /* Section Labels */
-    .section-label {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.65rem;
-        color: var(--text-muted);
-        letter-spacing: 0.1em;
-        margin: 0.75rem 0 0.5rem;
-        padding-bottom: 0.25rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-    
-    .section-label:first-child { margin-top: 0; }
-    
-    /* A2F Status Indicator */
-    .a2f-status {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 3px;
-        margin-top: 0.5rem;
-    }
-    
-    .a2f-status.connected {
-        background: rgba(74, 222, 128, 0.1);
-        color: var(--success);
-        border: 1px solid rgba(74, 222, 128, 0.3);
-    }
-    
-    .a2f-status.disconnected {
-        background: rgba(248, 113, 113, 0.1);
-        color: var(--error);
-        border: 1px solid rgba(248, 113, 113, 0.3);
-    }
-    
-    /* Toggle Switch */
-    .toggle-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 0;
-    }
-    
-    .toggle-label {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        letter-spacing: 0.05em;
-    }
-    
-    .toggle-select {
-        padding: 0.3rem 0.5rem;
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        color: var(--text-secondary);
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
-        cursor: pointer;
-    }
-    
-    .toggle-select:focus {
-        border-color: var(--text-secondary);
-        outline: none;
-    }
-    
-    /* Chat Messages */
-    .chat-messages {
-        max-height: 150px;
-        overflow-y: auto;
-        margin-top: 0.5rem;
-        padding: 0.5rem;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        display: none;
-    }
-    
-    .chat-messages.has-messages { display: block; }
-    
-    .chat-message {
-        padding: 0.5rem;
-        margin-bottom: 0.5rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-    }
-    
-    .chat-message:last-child { margin-bottom: 0; }
-    .chat-message.user { background: var(--bg-card); color: var(--text-secondary); }
-    .chat-message.assistant { background: transparent; color: var(--text-primary); }
-    .chat-message.system { color: var(--text-muted); font-size: 0.75rem; }
-    
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
-</style>
-```
 
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --border-color: #2a2a2a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #808080;
+            --text-muted: #505050;
+            --accent: #4a9eff;
+            --accent-dim: #2a5a8a;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --error: #f87171;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            height: 48px;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            letter-spacing: 0.15em;
+            color: var(--text-secondary);
+        }
+
+        .logo::before {
+            content: '◢◤◢ ◤◢◤ ◢◤◢';
+            display: block;
+            font-size: 6px;
+            letter-spacing: 0;
+            margin-bottom: 2px;
+            color: var(--text-muted);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 400;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            margin-top: 48px;
+            height: calc(100vh - 48px);
+        }
+
+        /* Avatar Section */
+        .avatar-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .avatar-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            min-height: 0;
+        }
+
+        .avatar-container {
+            width: 100%;
+            max-width: 450px;
+            aspect-ratio: 3/4;
+            max-height: calc(100vh - 220px);
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #avatar-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Chat Input */
+        .chat-section {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-primary);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 8px 12px;
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        #user-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        #user-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .input-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .input-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Status */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            justify-content: center;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+        }
+
+        .status-dot.error {
+            background: var(--error);
+        }
+
+        /* Controls Sidebar */
+        .controls-sidebar {
+            width: 300px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .controls-content {
+            padding: 16px;
+        }
+
+        .control-section {
+            margin-bottom: 16px;
+        }
+
+        .section-header {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            padding: 10px 14px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: all 0.2s;
+        }
+
+        .section-header:hover {
+            background: var(--border-color);
+        }
+
+        .section-header::after {
+            content: '▼';
+            font-size: 8px;
+            transition: transform 0.2s;
+        }
+
+        .section-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            padding: 12px 0;
+            display: block;
+        }
+
+        .section-content.hidden {
+            display: none;
+        }
+
+        /* Form Controls */
+        .control-row {
+            margin-bottom: 12px;
+        }
+
+        .control-row label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .control-row select,
+        .control-row input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .control-row select:focus,
+        .control-row input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-dim);
+        }
+
+        /* Slider */
+        .slider-row {
+            margin-bottom: 14px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .slider-value {
+            color: var(--text-muted);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--text-primary);
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 900px) {
+            .main-container {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 48px);
+            }
+
+            .avatar-section {
+                flex: none;
+            }
+
+            .avatar-wrapper {
+                padding: 12px;
+            }
+
+            .avatar-container {
+                max-width: 100%;
+                max-height: 45vh;
+                aspect-ratio: 4/3;
+            }
+
+            .controls-sidebar {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+                max-height: none;
+            }
+
+            .chat-section {
+                padding: 12px 16px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+
+        /* Very small screens */
+        @media (max-width: 480px) {
+            .header {
+                padding: 12px 16px;
+            }
+
+            .avatar-container {
+                max-height: 35vh;
+            }
+
+            .controls-content {
+                padding: 12px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav>
-        <a href="https://www.greystratum.com" class="logo">GREYSTRATUM</a>
-        <div class="nav-links">
-            <a href="https://www.greystratum.com/protocols/concordia.html">Concordia</a>
-            <a href="https://www.greystratum.com/protocols/cantara.html">Cantara</a>
-            <a href="https://www.greystratum.com/protocols/mandatum.html">Mandatum</a>
-        </div>
-    </nav>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">GREYSTRATUM</div>
+        <nav class="nav-links">
+            <a href="https://greystratum.com/concordia">Concordia</a>
+            <a href="https://greystratum.com/cantara">Cantara</a>
+            <a href="https://greystratum.com/mandatum">Mandatum</a>
+        </nav>
+    </header>
 
-```
-<!-- Main Container -->
-<div class="main-container">
-    <!-- Avatar -->
-    <div class="avatar-container">
-        <canvas id="avatar-canvas"></canvas>
-        <div class="loading-overlay" id="loading-overlay">
-            <div class="spinner"></div>
-            <p class="loading-text">INITIALIZING VESTIS</p>
-        </div>
-    </div>
-
-    <!-- Controls Below Avatar -->
-    <div class="controls-container">
-        <!-- Chat Input -->
-        <div class="chat-input-container">
-            <textarea id="user-input" placeholder="Speak or type..." rows="1"></textarea>
-            <button class="input-btn" id="mic-btn" title="Voice Input">◉</button>
-            <button class="input-btn" id="send-btn" title="Send">↑</button>
-        </div>
-
-        <!-- Status -->
-        <div class="status-bar">
-            <span class="status-dot" id="status-indicator"></span>
-            <span class="status-text" id="status-text">AWAITING CONNECTION</span>
-        </div>
-
-        <!-- Chat History -->
-        <div class="chat-messages" id="chat-messages"></div>
-
-        <!-- Collapsible Panels -->
-        <div class="panel-group">
-            
-            <!-- Audio2Face Settings (NEW) -->
-            <div class="panel" id="a2f-panel">
-                <div class="panel-header" onclick="togglePanel('a2f-panel')">
-                    <span class="panel-title">LIP-SYNC ENGINE</span>
-                    <span class="panel-toggle">▼</span>
+    <!-- Main Layout -->
+    <div class="main-container">
+        <!-- Avatar Section -->
+        <div class="avatar-section">
+            <div class="avatar-wrapper">
+                <div class="avatar-container">
+                    <canvas id="avatar-canvas"></canvas>
                 </div>
-                <div class="panel-content">
-                    <div class="panel-inner">
-                        <div class="toggle-row">
-                            <span class="toggle-label">ENGINE</span>
-                            <select class="toggle-select" id="lipsync-toggle">
-                                <option value="viseme">Azure Visemes (15 shapes)</option>
-                                <option value="a2f">Audio2Face (52 ARKit)</option>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-section">
+                <div class="input-wrapper">
+                    <input type="text" id="user-input" placeholder="Speak or type...">
+                    <button class="input-btn" id="mic-btn" title="Voice input">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </button>
+                    <button class="input-btn" id="send-btn" title="Send">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="19" x2="12" y2="5"/>
+                            <polyline points="5 12 12 5 19 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text">Initializing...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Sidebar -->
+        <aside class="controls-sidebar">
+            <div class="controls-content">
+                <!-- Lip-Sync Engine -->
+                <div class="control-section">
+                    <div class="section-header" data-section="lipsync">LIP-SYNC ENGINE</div>
+                    <div class="section-content" id="lipsync-section">
+                        <div class="control-row">
+                            <label>Engine</label>
+                            <select id="lipsync-engine">
+                                <option value="azure">Azure Visemes</option>
+                                <option value="audio2face">Audio2Face (A2F)</option>
                             </select>
                         </div>
-                        
-                        <div class="section-label">A2F SERVER</div>
-                        <div class="form-row">
-                            <input type="text" id="a2f-server-url" placeholder="http://localhost:8000" value="http://localhost:8000">
-                        </div>
-                        <div class="form-row">
-                            <button class="btn btn-small" id="a2f-test-btn">TEST CONNECTION</button>
-                        </div>
-                        <div id="a2f-status" class="a2f-status disconnected">✗ Not connected</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Connection Settings -->
-            <div class="panel" id="config-panel">
-                <div class="panel-header" onclick="togglePanel('config-panel')">
-                    <span class="panel-title">CONNECTION</span>
-                    <span class="panel-toggle">▼</span>
-                </div>
-                <div class="panel-content">
-                    <div class="panel-inner">
-                        <div class="form-row">
-                            <div class="form-label"><label>SPEECH KEY</label></div>
-                            <input type="password" id="speech-key" placeholder="Azure Speech API key">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-label"><label>REGION</label></div>
-                            <input type="text" id="speech-region" placeholder="e.g., eastus">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-label"><label>OPENAI ENDPOINT</label></div>
-                            <input type="text" id="openai-endpoint" placeholder="https://your-resource.openai.azure.com">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-label"><label>OPENAI KEY</label></div>
-                            <input type="password" id="openai-key" placeholder="Azure OpenAI API key">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-label"><label>DEPLOYMENT</label></div>
-                            <input type="text" id="openai-deployment" placeholder="e.g., gpt-4o">
-                        </div>
-                        <div class="form-row">
-                            <button class="btn" id="connect-btn">ESTABLISH CONNECTION</button>
+                        <div class="control-row" id="a2f-url-row" style="display: none;">
+                            <label>A2F Server URL</label>
+                            <input type="text" id="a2f-url" placeholder="http://localhost:8011">
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Voice Settings -->
-            <div class="panel" id="voice-panel">
-                <div class="panel-header" onclick="togglePanel('voice-panel')">
-                    <span class="panel-title">VOICE</span>
-                    <span class="panel-toggle">▼</span>
+                <!-- Connection -->
+                <div class="control-section">
+                    <div class="section-header" data-section="connection">CONNECTION</div>
+                    <div class="section-content" id="connection-section">
+                        <div class="control-row">
+                            <label>Azure Region</label>
+                            <select id="azure-region">
+                                <option value="eastus">East US</option>
+                                <option value="westus">West US</option>
+                                <option value="westus2">West US 2</option>
+                                <option value="eastus2">East US 2</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="panel-content">
-                    <div class="panel-inner">
-                        <div class="form-row">
-                            <div class="form-label"><label>VOICE MODEL</label></div>
+
+                <!-- Voice -->
+                <div class="control-section">
+                    <div class="section-header" data-section="voice">VOICE</div>
+                    <div class="section-content" id="voice-section">
+                        <div class="control-row">
+                            <label>Voice</label>
                             <select id="voice-select">
-                                <option value="en-US-AndrewMultilingualNeural">Andrew</option>
-                                <option value="en-US-AvaMultilingualNeural">Ava</option>
-                                <option value="en-US-BrianMultilingualNeural">Brian</option>
-                                <option value="en-US-EmmaMultilingualNeural">Emma</option>
-                                <option value="en-US-JennyNeural">Jenny</option>
-                                <option value="en-US-GuyNeural">Guy</option>
+                                <option value="en-US-GuyNeural">Guy (US)</option>
+                                <option value="en-US-JennyNeural">Jenny (US)</option>
+                                <option value="en-US-AriaNeural">Aria (US)</option>
+                                <option value="en-US-DavisNeural">Davis (US)</option>
+                                <option value="en-GB-RyanNeural">Ryan (UK)</option>
+                                <option value="en-GB-SoniaNeural">Sonia (UK)</option>
                             </select>
                         </div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>RATE</label>
-                                <span class="value" id="speed-value">1.0×</span>
+                        <div class="slider-row">
+                            <div class="slider-label">
+                                <span>Speaking Rate</span>
+                                <span class="slider-value" id="speech-rate-value">1.0x</span>
                             </div>
-                            <input type="range" id="speed-slider" min="0.5" max="1.5" step="0.1" value="1.0">
+                            <input type="range" id="speech-rate" min="0.5" max="2" step="0.1" value="1">
                         </div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>MOUTH INTENSITY</label>
-                                <span class="value" id="intensity-value">100%</span>
+                        <div class="slider-row">
+                            <div class="slider-label">
+                                <span>Pitch</span>
+                                <span class="slider-value" id="speech-pitch-value">0%</span>
                             </div>
-                            <input type="range" id="intensity-slider" min="0.3" max="1.5" step="0.1" value="1.0">
+                            <input type="range" id="speech-pitch" min="-50" max="50" step="5" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Materials -->
+                <div class="control-section">
+                    <div class="section-header collapsed" data-section="materials">MATERIALS</div>
+                    <div class="section-content hidden" id="materials-section">
+                        <div class="slider-row">
+                            <div class="slider-label">
+                                <span>Skin Clearcoat</span>
+                                <span class="slider-value" id="skin-clearcoat-value">0.02</span>
+                            </div>
+                            <input type="range" id="skin-clearcoat" min="0" max="0.2" step="0.01" value="0.02">
+                        </div>
+                        <div class="slider-row">
+                            <div class="slider-label">
+                                <span>Skin Sheen</span>
+                                <span class="slider-value" id="skin-sheen-value">0.15</span>
+                            </div>
+                            <input type="range" id="skin-sheen" min="0" max="0.5" step="0.05" value="0.15">
+                        </div>
+                        <div class="slider-row">
+                            <div class="slider-label">
+                                <span>Hair Anisotropy</span>
+                                <span class="slider-value" id="hair-anisotropy-value">0.4</span>
+                            </div>
+                            <input type="range" id="hair-anisotropy" min="0" max="1" step="0.1" value="0.4">
+                        </div>
+                        <div class="slider-row">
+                            <div class="slider-label">
+                                <span>Eye Clearcoat</span>
+                                <span class="slider-value" id="eye-clearcoat-value">0.9</span>
+                            </div>
+                            <input type="range" id="eye-clearcoat" min="0" max="1" step="0.1" value="0.9">
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Material Settings -->
-            <div class="panel" id="material-panel">
-                <div class="panel-header" onclick="togglePanel('material-panel')">
-                    <span class="panel-title">MATERIALS</span>
-                    <span class="panel-toggle">▼</span>
-                </div>
-                <div class="panel-content">
-                    <div class="panel-inner">
-                        <div class="section-label">SKIN</div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>CLEARCOAT</label>
-                                <span class="value" id="skin-clearcoat-value">0.04</span>
-                            </div>
-                            <input type="range" id="skin-clearcoat" min="0" max="0.2" step="0.01" value="0.04">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>SHEEN</label>
-                                <span class="value" id="skin-sheen-value">0.25</span>
-                            </div>
-                            <input type="range" id="skin-sheen" min="0" max="0.6" step="0.05" value="0.25">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>ROUGHNESS</label>
-                                <span class="value" id="skin-roughness-value">0.55</span>
-                            </div>
-                            <input type="range" id="skin-roughness" min="0.3" max="0.8" step="0.05" value="0.55">
-                        </div>
-
-                        <div class="section-label">HAIR</div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>ANISOTROPY</label>
-                                <span class="value" id="hair-anisotropy-value">0.40</span>
-                            </div>
-                            <input type="range" id="hair-anisotropy" min="0" max="1.5" step="0.1" value="0.4">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>SHEEN</label>
-                                <span class="value" id="hair-sheen-value">0.20</span>
-                            </div>
-                            <input type="range" id="hair-sheen" min="0" max="0.6" step="0.05" value="0.2">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>ROUGHNESS</label>
-                                <span class="value" id="hair-roughness-value">0.45</span>
-                            </div>
-                            <input type="range" id="hair-roughness" min="0.2" max="0.7" step="0.05" value="0.45">
-                        </div>
-
-                        <div class="section-label">EYES</div>
-                        <div class="form-row">
-                            <div class="form-label">
-                                <label>WETNESS</label>
-                                <span class="value" id="eyes-clearcoat-value">0.90</span>
-                            </div>
-                            <input type="range" id="eyes-clearcoat" min="0.3" max="1.0" step="0.05" value="0.9">
-                        </div>
-
-                        <div class="form-row" style="margin-top: 0.75rem;">
-                            <button class="btn btn-small" id="reset-materials-btn">RESET DEFAULTS</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </aside>
     </div>
-</div>
 
-<!-- Scripts -->
-<script type="importmap">
-{
-    "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@latest/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
     }
-}
-</script>
+    </script>
+    <script src="config.js"></script>
+    <script src="viseme-mapper.js"></script>
+    <script type="module" src="avatar-renderer.js"></script>
+    <script type="module" src="azure-services-viseme.js"></script>
+    <script type="module" src="app.js"></script>
 
-<script>
-    // Panel toggle
-    function togglePanel(id) {
-        document.getElementById(id).classList.toggle('open');
-    }
-
-    // Material settings sliders
-    document.addEventListener('DOMContentLoaded', () => {
-        // Auto-resize textarea
-        const textarea = document.getElementById('user-input');
-        textarea?.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    <script>
+        // Section toggle
+        document.querySelectorAll('.section-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const sectionId = header.dataset.section + '-section';
+                const content = document.getElementById(sectionId);
+                header.classList.toggle('collapsed');
+                content.classList.toggle('hidden');
+            });
         });
 
-        // A2F Test Connection button
-        document.getElementById('a2f-test-btn')?.addEventListener('click', async () => {
-            const url = document.getElementById('a2f-server-url').value.trim();
-            const statusEl = document.getElementById('a2f-status');
-            
-            statusEl.textContent = '⋯ Testing...';
-            statusEl.className = 'a2f-status';
-            
-            try {
-                const response = await fetch(`${url}/health`, { 
-                    method: 'GET',
-                    signal: AbortSignal.timeout(5000)
+        // Slider value updates
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            const valueSpan = document.getElementById(slider.id + '-value');
+            if (valueSpan) {
+                slider.addEventListener('input', () => {
+                    let val = slider.value;
+                    if (slider.id === 'speech-rate') val += 'x';
+                    else if (slider.id === 'speech-pitch') val += '%';
+                    valueSpan.textContent = val;
                 });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    statusEl.textContent = `✓ Connected (${data.mode || 'ready'})`;
-                    statusEl.className = 'a2f-status connected';
-                    
-                    // Save URL and update app
-                    localStorage.setItem('a2f_server_url', url);
-                    if (window.app?.a2fClient) {
-                        window.app.a2fClient.configure({ serverUrl: url });
-                    }
-                } else {
-                    statusEl.textContent = `✗ HTTP ${response.status}`;
-                    statusEl.className = 'a2f-status disconnected';
-                }
-            } catch (err) {
-                statusEl.textContent = `✗ ${err.message || 'Connection failed'}`;
-                statusEl.className = 'a2f-status disconnected';
             }
         });
 
-        // Skin sliders
-        const skinClearcoat = document.getElementById('skin-clearcoat');
-        const skinSheen = document.getElementById('skin-sheen');
-        const skinRoughness = document.getElementById('skin-roughness');
-
-        skinClearcoat?.addEventListener('input', (e) => {
-            document.getElementById('skin-clearcoat-value').textContent = parseFloat(e.target.value).toFixed(2);
-            if (window.app?.renderer) {
-                app.renderer.updateMaterialSettings('skin', { clearcoat: parseFloat(e.target.value) });
-            }
+        // Lip-sync engine toggle
+        document.getElementById('lipsync-engine').addEventListener('change', (e) => {
+            document.getElementById('a2f-url-row').style.display = 
+                e.target.value === 'audio2face' ? 'block' : 'none';
         });
-
-        skinSheen?.addEventListener('input', (e) => {
-            document.getElementById('skin-sheen-value').textContent = parseFloat(e.target.value).toFixed(2);
-            if (window.app?.renderer) {
-                app.renderer.updateMaterialSettings('skin', { sheen: parseFloat(e.target.value) });
-            }
-        });
-
-        skinRoughness?.addEventListener('input', (e) => {
-            document.getElementById('skin-roughness-value').textContent = parseFloat(e.target.value).toFixed(2);
-            if (window.app?.renderer) {
-                app.renderer.updateMaterialSettings('skin', { roughness: parseFloat(e.target.value) });
-            }
-        });
-
-        // Hair sliders
-        const hairAnisotropy = document.getElementById('hair-anisotropy');
-        const hairSheen = document.getElementById('hair-sheen');
-        const hairRoughness = document.getElementById('hair-roughness');
-
-        hairAnisotropy?.addEventListener('input', (e) => {
-            document.getElementById('hair-anisotropy-value').textContent = parseFloat(e.target.value).toFixed(2);
-            if (window.app?.renderer) {
-                app.renderer.updateMaterialSettings('hair', { anisotropy: parseFloat(e.target.value) });
-            }
-        });
-
-        hairSheen?.addEventListener('input', (e) => {
-            document.getElementById('hair-sheen-value').textContent = parseFloat(e.target.value).toFixed(2);
-            if (window.app?.renderer) {
-                app.renderer.updateMaterialSettings('hair', { sheen: parseFloat(e.target.value) });
-            }
-        });
-
-        hairRoughness?.addEventListener('input', (e) => {
-            document.getElementById('hair-roughness-value').textContent = parseFloat(e.target.value).toFixed(2);
-            if (window.app?.renderer) {
-                app.renderer.updateMaterialSettings('hair', { roughness: parseFloat(e.target.value) });
-            }
-        });
-
-        // Eyes slider
-        const eyesClearcoat = document.getElementById('eyes-clearcoat');
-        eyesClearcoat?.addEventListener('input', (e) => {
-            document.getElementById('eyes-clearcoat-value').textContent = parseFloat(e.target.value).toFixed(2);
-            if (window.app?.renderer) {
-                app.renderer.updateMaterialSettings('eyes', { clearcoat: parseFloat(e.target.value) });
-            }
-        });
-
-        // Reset button
-        document.getElementById('reset-materials-btn')?.addEventListener('click', () => {
-            document.getElementById('skin-clearcoat').value = 0.04;
-            document.getElementById('skin-clearcoat-value').textContent = '0.04';
-            document.getElementById('skin-sheen').value = 0.25;
-            document.getElementById('skin-sheen-value').textContent = '0.25';
-            document.getElementById('skin-roughness').value = 0.55;
-            document.getElementById('skin-roughness-value').textContent = '0.55';
-
-            document.getElementById('hair-anisotropy').value = 0.4;
-            document.getElementById('hair-anisotropy-value').textContent = '0.40';
-            document.getElementById('hair-sheen').value = 0.2;
-            document.getElementById('hair-sheen-value').textContent = '0.20';
-            document.getElementById('hair-roughness').value = 0.45;
-            document.getElementById('hair-roughness-value').textContent = '0.45';
-
-            document.getElementById('eyes-clearcoat').value = 0.9;
-            document.getElementById('eyes-clearcoat-value').textContent = '0.90';
-
-            if (window.app?.renderer) {
-                app.renderer.updateMaterialSettings('skin', { clearcoat: 0.04, sheen: 0.25, roughness: 0.55 });
-                app.renderer.updateMaterialSettings('hair', { anisotropy: 0.4, sheen: 0.2, roughness: 0.45 });
-                app.renderer.updateMaterialSettings('eyes', { clearcoat: 0.9 });
-            }
-        });
-
-        // Voice sliders
-        document.getElementById('speed-slider')?.addEventListener('input', (e) => {
-            document.getElementById('speed-value').textContent = parseFloat(e.target.value).toFixed(1) + '×';
-        });
-
-        document.getElementById('intensity-slider')?.addEventListener('input', (e) => {
-            document.getElementById('intensity-value').textContent = Math.round(parseFloat(e.target.value) * 100) + '%';
-        });
-    });
-</script>
-
-<script src="config.js"></script>
-<script type="module" src="viseme-mapper.js"></script>
-<script type="module" src="blendshape-mapper.js"></script>
-<script type="module" src="avatar-renderer.js"></script>
-<script type="module" src="audio2face-client.js"></script>
-<script type="module" src="azure-services-viseme.js"></script>
-<script type="module" src="app.js"></script>
-```
-
+    </script>
 </body>
 </html>
