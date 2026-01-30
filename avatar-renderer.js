@@ -739,8 +739,8 @@ class AvatarRenderer {
         // Target chest/upper body area (about 65% up from ground)
         const targetY = height * 0.65;
 
-        // Rotate model to face camera (fix 45-degree offset)
-        this.model.rotation.y = Math.PI;  // 180 degrees to face forward
+        // Model faces forward with rotation = 0
+        this.model.rotation.y = 0;
 
         // Camera: centered (x=0), at chest height, pulled back (z=2.2) for wider shot
         this.camera.position.set(0, targetY, 2.2);
