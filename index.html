@@ -2,15 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Vestis — Grey Stratum</title>
     <link rel="icon" href="data:,">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    
+    <!-- Preconnect for faster font loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <!-- Azure Speech SDK -->
     <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
     
+    <!-- ES Module Shims for Safari < 16.4 import map support -->
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+        /* Fonts loaded via link tag above */
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -38,6 +49,71 @@
             min-height: 100vh;
             line-height: 1.6;
             overflow-x: hidden;
+            /* iOS safe area support */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        
+        /* iOS Start Overlay - Required for audio unlock */
+        .ios-start-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        
+        .ios-start-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .ios-start-content {
+            text-align: center;
+        }
+        
+        .ios-start-content h2 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: 0.3em;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .ios-start-content p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+        
+        .ios-start-btn {
+            padding: 1rem 3rem;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            letter-spacing: 0.15em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .ios-start-btn:hover,
+        .ios-start-btn:active {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+            background: var(--bg-card);
         }
         
         /* Navigation */
@@ -495,6 +571,15 @@
     </style>
 </head>
 <body>
+    <!-- iOS Audio Unlock Overlay - Required for Safari audio playback -->
+    <div class="ios-start-overlay" id="ios-start-overlay">
+        <div class="ios-start-content">
+            <h2>VESTIS</h2>
+            <p>3D Avatar Lip-Sync Experience</p>
+            <button class="ios-start-btn" id="ios-start-btn">TAP TO BEGIN</button>
+        </div>
+    </div>
+
     <!-- Navigation -->
     <nav>
         <a href="https://www.greystratum.com" class="logo">GREYSTRATUM</a>
@@ -711,6 +796,7 @@
     </div>
 
     <!-- Scripts -->
+    <!-- Import map with shim support for older Safari -->
     <script type="importmap">
     {
         "imports": {
@@ -718,6 +804,95 @@
             "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
         }
     }
+    </script>
+
+    <!-- iOS Audio Unlock Helper - Must run before other scripts -->
+    <script>
+        /**
+         * iOS Audio Unlock System
+         * Safari/iOS requires user gesture to unlock Web Audio API
+         */
+        window.iOSAudioHelper = {
+            audioContext: null,
+            unlocked: false,
+            
+            // Detect iOS/Safari
+            isIOS: function() {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            },
+            
+            isSafari: function() {
+                return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            },
+            
+            needsUnlock: function() {
+                return this.isIOS() || this.isSafari();
+            },
+            
+            // Create and unlock AudioContext
+            unlock: async function() {
+                if (this.unlocked) return true;
+                
+                try {
+                    // Create AudioContext with webkit fallback
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.audioContext = new AudioContext();
+                    
+                    // Resume if suspended
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
+                    }
+                    
+                    // Play silent buffer to fully unlock
+                    const buffer = this.audioContext.createBuffer(1, 1, 22050);
+                    const source = this.audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(this.audioContext.destination);
+                    source.start(0);
+                    
+                    this.unlocked = true;
+                    console.log('[iOS Audio] AudioContext unlocked successfully');
+                    return true;
+                } catch (err) {
+                    console.error('[iOS Audio] Failed to unlock:', err);
+                    return false;
+                }
+            },
+            
+            // Get or create AudioContext
+            getAudioContext: function() {
+                if (!this.audioContext) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.audioContext = new AudioContext();
+                }
+                return this.audioContext;
+            }
+        };
+        
+        // Hide overlay for non-iOS/Safari or show it
+        document.addEventListener('DOMContentLoaded', function() {
+            const overlay = document.getElementById('ios-start-overlay');
+            const startBtn = document.getElementById('ios-start-btn');
+            
+            if (!window.iOSAudioHelper.needsUnlock()) {
+                // Desktop browser - hide overlay immediately
+                overlay.classList.add('hidden');
+                setTimeout(() => overlay.style.display = 'none', 500);
+            } else {
+                // iOS/Safari - wait for user tap
+                startBtn.addEventListener('click', async function() {
+                    await window.iOSAudioHelper.unlock();
+                    overlay.classList.add('hidden');
+                    setTimeout(() => overlay.style.display = 'none', 500);
+                });
+                
+                // Also unlock on any touch (backup)
+                document.addEventListener('touchstart', function unlockOnTouch() {
+                    window.iOSAudioHelper.unlock();
+                    document.removeEventListener('touchstart', unlockOnTouch);
+                }, { once: true });
+            }
+        });
     </script>
 
     <script>

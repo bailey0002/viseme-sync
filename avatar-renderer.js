@@ -145,27 +145,59 @@ class AvatarRenderer {
         this.camera.position.set(0, 1.2, 2.2);
         this.camera.lookAt(0, 1.2, 0);
 
-        // Renderer
+        // Renderer with iOS-optimized settings
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             antialias: true,
-            alpha: true
+            alpha: true,
+            powerPreference: 'high-performance', // Request best GPU on iOS
+            failIfMajorPerformanceCaveat: false  // Don't fail on low-end devices
         });
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        // Limit pixel ratio on mobile to prevent performance issues
+        const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
+        const maxPixelRatio = isMobile ? 2 : 2;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
         this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.0;
         this.renderer.useLegacyLights = false;
 
-        // Orbit Controls
+        // Check WebGL capabilities for iOS compatibility
+        this.checkWebGLCapabilities();
+
+        // Handle WebGL context loss (common on iOS)
+        this.canvas.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            console.error('[WebGL] Context lost');
+            this.handleContextLoss();
+        });
+
+        this.canvas.addEventListener('webglcontextrestored', () => {
+            console.log('[WebGL] Context restored');
+            this.handleContextRestore();
+        });
+
+        // Orbit Controls with touch optimizations
         this.controls = new OrbitControls(this.camera, this.canvas);
         this.controls.target.set(0, 1.2, 0);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
+        this.controls.dampingFactor = isMobile ? 0.1 : 0.05; // Faster response on mobile
         this.controls.minDistance = 0.5;
         this.controls.maxDistance = 5;
         this.controls.maxPolarAngle = Math.PI * 0.9;
+        
+        // Touch-specific settings for iOS
+        if (isMobile) {
+            this.controls.touches = {
+                ONE: THREE.TOUCH.ROTATE,
+                TWO: THREE.TOUCH.DOLLY_PAN
+            };
+            this.controls.rotateSpeed = 0.5;
+            this.controls.zoomSpeed = 0.8;
+        }
+        
         this.controls.update();
 
         // Lighting
@@ -179,6 +211,80 @@ class AvatarRenderer {
 
         // Start render loop
         this.animate();
+    }
+
+    /**
+     * Check WebGL capabilities and warn about potential issues
+     */
+    checkWebGLCapabilities() {
+        const gl = this.renderer.getContext();
+        
+        const maxUniforms = gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS);
+        const maxTextures = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+        const renderer = gl.getParameter(gl.RENDERER);
+        const vendor = gl.getParameter(gl.VENDOR);
+        
+        console.log('[WebGL] Capabilities:', {
+            renderer,
+            vendor,
+            maxVertexUniforms: maxUniforms,
+            maxTextureUnits: maxTextures
+        });
+        
+        // Warn if uniform capacity is low (might affect morph targets)
+        if (maxUniforms < 300) {
+            console.warn('[WebGL] Low uniform capacity detected. Complex morph target animations may not work correctly.');
+            // Could reduce morph target count or use fallback here
+        }
+        
+        // Check for WebGL 2 (better morph target support)
+        const isWebGL2 = gl instanceof WebGL2RenderingContext;
+        console.log('[WebGL] WebGL 2:', isWebGL2);
+        
+        return {
+            maxUniforms,
+            maxTextures,
+            isWebGL2,
+            renderer,
+            vendor
+        };
+    }
+
+    /**
+     * Handle WebGL context loss
+     */
+    handleContextLoss() {
+        // Stop animation loop
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+        
+        // Show error to user
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            const text = overlay.querySelector('.loading-text');
+            if (text) {
+                text.textContent = 'Graphics error - please refresh';
+            }
+        }
+    }
+
+    /**
+     * Handle WebGL context restore
+     */
+    handleContextRestore() {
+        // Reinitialize renderer
+        this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
+        
+        // Restart animation
+        this.animate();
+        
+        // Hide overlay
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
     }
 
     setupLighting() {

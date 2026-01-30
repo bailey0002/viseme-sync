@@ -4,6 +4,10 @@
  * Connects to A2F Bridge Server running on GPU instance.
  * Receives ARKit blendshape streams and applies them to Three.js avatar.
  * 
+ * UPDATED: iOS Safari compatibility
+ * - Added playsinline attributes for audio elements
+ * - AudioContext unlock integration
+ * 
  * Usage:
  *   const a2f = new Audio2FaceClient('ws://your-gpu-ip:8000');
  *   await a2f.connect();
@@ -234,6 +238,10 @@ class Audio2FaceClient {
             ws.onopen = () => {
                 console.log('A2F: WebSocket connected');
                 
+                // Ensure audio element has iOS-required attributes
+                audioElement.setAttribute('playsinline', '');
+                audioElement.setAttribute('webkit-playsinline', '');
+                
                 // Start audio playback
                 audioElement.play().then(() => {
                     // Signal server to start streaming
@@ -298,6 +306,10 @@ class Audio2FaceClient {
         console.log(`A2F: Received ${frame_count} frames at ${fps} FPS`);
         
         this.frameBuffer = frames;
+        
+        // Ensure audio element has iOS-required attributes
+        audioElement.setAttribute('playsinline', '');
+        audioElement.setAttribute('webkit-playsinline', '');
         
         // Start playback and animation together
         await audioElement.play();

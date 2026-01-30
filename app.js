@@ -2,6 +2,10 @@
  * Main Application
  * Connects UI, Azure services, and 3D avatar rendering
  * Now supports both Azure Visemes AND Audio2Face for lip-sync
+ * 
+ * UPDATED: iOS Safari compatibility
+ * - Waits for audio unlock before initializing speech
+ * - Handles iOS-specific initialization flow
  */
 
 // Wait for other modules to load
@@ -17,11 +21,17 @@ class App {
         // Lip-sync mode: 'viseme' (Azure) or 'a2f' (Audio2Face)
         this.lipSyncMode = 'viseme';
         this.a2fServerUrl = 'http://localhost:8000';  // Default for local testing
+        
+        // iOS/Safari detection
+        this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        this.isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
 
         // DOM elements
         this.elements = {
             canvas: document.getElementById('avatar-canvas'),
             loadingOverlay: document.getElementById('loading-overlay'),
+            iosOverlay: document.getElementById('ios-start-overlay'),
             statusIndicator: document.getElementById('status-indicator'),
             statusText: document.getElementById('status-text'),
             configSection: document.getElementById('config-panel'),
@@ -54,7 +64,13 @@ class App {
     }
 
     async init() {
-        // Initialize 3D renderer
+        console.log('[App] Initializing...', { 
+            isIOS: this.isIOS, 
+            isSafari: this.isSafari, 
+            isMobile: this.isMobile 
+        });
+
+        // Initialize 3D renderer first (doesn't need audio)
         this.renderer = new AvatarRenderer(this.elements.canvas);
 
         // Load the avatar model
@@ -62,10 +78,19 @@ class App {
             await this.renderer.loadModel('assets/avatar.glb');
             this.elements.loadingOverlay.classList.add('hidden');
         } catch (error) {
-            this.elements.loadingOverlay.querySelector('p').textContent = 
-                'Failed to load avatar: ' + error.message;
+            const loadingText = this.elements.loadingOverlay.querySelector('.loading-text') || 
+                               this.elements.loadingOverlay.querySelector('p');
+            if (loadingText) {
+                loadingText.textContent = 'Failed to load avatar: ' + error.message;
+            }
             console.error('Failed to load avatar:', error);
             return;
+        }
+
+        // On iOS/Safari, wait for audio unlock before initializing Azure
+        if (this.isIOS || this.isSafari) {
+            console.log('[App] iOS/Safari detected - waiting for audio unlock');
+            await this.waitForAudioUnlock();
         }
 
         // Initialize Azure services (Viseme-based lip sync)
@@ -82,12 +107,64 @@ class App {
         if (this.hasValidConfig()) {
             this.autoConnect();
         } else {
-            this.elements.configSection.setAttribute('open', '');
+            if (this.elements.configSection) {
+                this.elements.configSection.setAttribute('open', '');
+            }
             this.addSystemMessage('Please configure your Azure credentials to get started.');
         }
 
         // Start debug update loop
         this.updateDebugInfo();
+        
+        console.log('[App] Initialization complete');
+    }
+
+    /**
+     * Wait for iOS audio unlock (user gesture)
+     */
+    async waitForAudioUnlock() {
+        // Check if already unlocked
+        if (window.iOSAudioHelper?.unlocked) {
+            console.log('[App] Audio already unlocked');
+            return;
+        }
+
+        return new Promise(resolve => {
+            // Listen for iOS overlay close
+            const checkUnlock = () => {
+                if (window.iOSAudioHelper?.unlocked) {
+                    console.log('[App] Audio unlocked via iOS helper');
+                    resolve();
+                    return;
+                }
+                // Keep checking
+                setTimeout(checkUnlock, 100);
+            };
+
+            // Start checking
+            checkUnlock();
+
+            // Also resolve if overlay is hidden (user tapped)
+            if (this.elements.iosOverlay) {
+                const observer = new MutationObserver((mutations) => {
+                    if (this.elements.iosOverlay.classList.contains('hidden')) {
+                        console.log('[App] iOS overlay hidden');
+                        observer.disconnect();
+                        resolve();
+                    }
+                });
+                observer.observe(this.elements.iosOverlay, { 
+                    attributes: true, 
+                    attributeFilter: ['class'] 
+                });
+            }
+
+            // Timeout after 30 seconds
+            setTimeout(() => {
+                console.log('[App] Audio unlock timeout - continuing anyway');
+                resolve();
+            }, 30000);
+        });
     }
 
     /**

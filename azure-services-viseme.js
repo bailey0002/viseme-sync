@@ -6,6 +6,11 @@
  * 
  * Now supports Audio2Face mode where visemes are disabled and audio
  * is routed to A2F for ARKit blendshape processing.
+ * 
+ * UPDATED: iOS Safari compatibility fixes
+ * - Uses ArrayBuffer synthesis for iOS
+ * - Manual audio element creation with playsinline
+ * - AudioContext unlock integration
  */
 
 class AzureServicesViseme {
@@ -43,6 +48,15 @@ class AzureServicesViseme {
 
         // Event callbacks
         this.callbacks = {};
+        
+        // iOS/Safari detection
+        this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        this.useIOSMode = this.isIOS || this.isSafari;
+        
+        if (this.useIOSMode) {
+            console.log('[Azure TTS] iOS/Safari detected - using compatible audio mode');
+        }
     }
 
     /**
@@ -437,6 +451,7 @@ class AzureServicesViseme {
     /**
      * Speak text with Viseme-based lip sync
      * In A2F mode, emits audioReady event for external processing
+     * iOS/Safari: Uses ArrayBuffer synthesis with manual audio element
      */
     async speak(text) {
         if (!this.speechConfig) {
@@ -445,7 +460,7 @@ class AzureServicesViseme {
         }
 
         this.currentSynthesisId++;
-        console.log(`Starting synthesis session #${this.currentSynthesisId}, visemeEnabled: ${this.visemeEnabled}`);
+        console.log(`Starting synthesis session #${this.currentSynthesisId}, visemeEnabled: ${this.visemeEnabled}, iOS mode: ${this.useIOSMode}`);
 
         // Clear previous data
         this.visemeQueue = [];
@@ -464,7 +479,12 @@ class AzureServicesViseme {
             return this.speakWithAudioCapture(ssml);
         }
 
-        // Normal viseme mode - play directly
+        // iOS/Safari mode - always use ArrayBuffer approach for reliability
+        if (this.useIOSMode) {
+            return this.speakIOSCompatible(ssml);
+        }
+
+        // Desktop mode - use SpeakerAudioDestination
         this.createSynthesizer();
 
         return new Promise((resolve, reject) => {
@@ -481,6 +501,107 @@ class AzureServicesViseme {
                 },
                 (error) => {
                     console.error('Viseme synthesis error:', error);
+                    reject(error);
+                }
+            );
+        });
+    }
+
+    /**
+     * iOS/Safari compatible speech synthesis
+     * Synthesizes to ArrayBuffer, creates manual audio element with playsinline
+     */
+    async speakIOSCompatible(ssml) {
+        console.log('[iOS TTS] Using iOS-compatible synthesis mode');
+
+        // Ensure AudioContext is unlocked
+        if (window.iOSAudioHelper && !window.iOSAudioHelper.unlocked) {
+            console.log('[iOS TTS] AudioContext not unlocked - attempting unlock');
+            await window.iOSAudioHelper.unlock();
+        }
+
+        // Create synthesizer without speaker output (null audio config)
+        if (this.synthesizer) {
+            try { this.synthesizer.close(); } catch (e) {}
+        }
+        this.synthesizer = new SpeechSDK.SpeechSynthesizer(this.speechConfig, null);
+        this.setupSynthesizerEvents();
+
+        const sessionId = this.currentSynthesisId;
+
+        return new Promise((resolve, reject) => {
+            this.synthesizer.speakSsmlAsync(
+                ssml,
+                async (result) => {
+                    if (sessionId !== this.currentSynthesisId) {
+                        console.log('[iOS TTS] Session cancelled');
+                        return;
+                    }
+
+                    if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+                        console.log('[iOS TTS] Synthesis completed, bytes:', result.audioData.byteLength);
+                        console.log('[iOS TTS] Visemes collected:', this.visemeQueue.length);
+
+                        try {
+                            // Create audio blob and element
+                            const audioBlob = new Blob([result.audioData], { type: 'audio/wav' });
+                            const audioUrl = URL.createObjectURL(audioBlob);
+                            
+                            // Create audio element with iOS-required attributes
+                            const audioElement = new Audio();
+                            audioElement.src = audioUrl;
+                            audioElement.setAttribute('playsinline', '');
+                            audioElement.setAttribute('webkit-playsinline', '');
+                            audioElement.preload = 'auto';
+
+                            // Wait for audio to be ready
+                            await new Promise((res, rej) => {
+                                audioElement.oncanplaythrough = res;
+                                audioElement.onerror = rej;
+                                setTimeout(rej, 5000); // 5s timeout
+                            });
+
+                            // Setup playback handlers
+                            audioElement.onplay = () => {
+                                console.log('[iOS TTS] Audio playback started');
+                                this.playbackStartTime = performance.now();
+                                this.currentVisemeIndex = 0;
+                                this.isSpeaking = true;
+                                this.emit('speaking', true);
+                                
+                                if (this.visemeEnabled) {
+                                    this.processVisemes();
+                                }
+                            };
+
+                            audioElement.onended = () => {
+                                console.log('[iOS TTS] Audio playback ended');
+                                URL.revokeObjectURL(audioUrl);
+                                this.handleSpeechEnd();
+                            };
+
+                            audioElement.onerror = (e) => {
+                                console.error('[iOS TTS] Audio playback error:', e);
+                                URL.revokeObjectURL(audioUrl);
+                                this.handleSpeechEnd();
+                            };
+
+                            // Play audio
+                            await audioElement.play();
+                            resolve(result);
+
+                        } catch (playError) {
+                            console.error('[iOS TTS] Playback setup failed:', playError);
+                            this.emit('error', { message: 'Audio playback failed on iOS: ' + playError.message });
+                            reject(playError);
+                        }
+                    } else {
+                        console.log('[iOS TTS] Synthesis failed:', result.reason, result.errorDetails);
+                        reject(new Error('Speech synthesis failed: ' + (result.errorDetails || result.reason)));
+                    }
+                },
+                (error) => {
+                    console.error('[iOS TTS] Synthesis error:', error);
                     reject(error);
                 }
             );
@@ -506,7 +627,12 @@ class AzureServicesViseme {
                         // Create audio blob from result
                         const audioBlob = new Blob([result.audioData], { type: 'audio/wav' });
                         const audioUrl = URL.createObjectURL(audioBlob);
-                        const audioElement = new Audio(audioUrl);
+                        
+                        // Create audio element with iOS attributes
+                        const audioElement = new Audio();
+                        audioElement.src = audioUrl;
+                        audioElement.setAttribute('playsinline', '');
+                        audioElement.setAttribute('webkit-playsinline', '');
 
                         // Mark as speaking
                         this.isSpeaking = true;
