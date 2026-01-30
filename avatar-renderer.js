@@ -392,9 +392,28 @@ class AvatarRenderer {
                 (gltf) => {
                     console.log('Model loaded:', gltf);
 
+                    // Clean up previous model
                     if (this.model) {
                         this.scene.remove(this.model);
                     }
+                    
+                    // Clean up previous animation mixer
+                    if (this.mixer) {
+                        this.mixer.stopAllAction();
+                        this.mixer = null;
+                    }
+                    
+                    // Stop previous idle movement
+                    this.stopIdleMovement();
+                    
+                    // Stop previous expression system
+                    if (this.expressionSystem) {
+                        this.expressionSystem.stop();
+                        this.expressionSystem = null;
+                    }
+                    
+                    // Clear bone references
+                    this.bones = {};
 
                     this.model = gltf.scene;
 
@@ -426,15 +445,20 @@ class AvatarRenderer {
                     // UPGRADE ALL MATERIALS
                     this.upgradeMaterials();
 
-                    // APPLY JAW CORRECTION (NEW)
+                    // APPLY JAW CORRECTION
                     this.applyJawCorrection(0.7);
 
-                    // Animation mixer
-                    if (gltf.animations && gltf.animations.length > 0) {
+                    // Check if model has animations
+                    const hasAnimation = gltf.animations && gltf.animations.length > 0;
+                    
+                    // Animation mixer (if model has animations)
+                    if (hasAnimation) {
                         this.mixer = new THREE.AnimationMixer(this.model);
                         const idleAction = this.mixer.clipAction(gltf.animations[0]);
                         idleAction.play();
                         console.log('Playing animation:', gltf.animations[0].name);
+                    } else {
+                        console.log('No embedded animation - will apply static pose');
                     }
 
                     // Initialize viseme mapper
@@ -450,6 +474,11 @@ class AvatarRenderer {
                     }
 
                     this.setupBones();
+                    
+                    // For models without animation, apply relaxed pose
+                    if (!hasAnimation) {
+                        this.applyRelaxedPose();
+                    }
 
                     // Store head mesh reference
                     this.model.traverse((node) => {
@@ -870,6 +899,8 @@ class AvatarRenderer {
     }
 
     positionArms() {
+        // Basic arm positioning - works for both animated and non-animated models
+        // For animated models, this may be overridden by the animation
         if (this.bones.LeftShoulder) {
             this.bones.LeftShoulder.rotation.set(1.6, 0, -1.3);
         }
@@ -890,6 +921,146 @@ class AvatarRenderer {
         }
 
         console.log('Arms positioned: relaxed pose');
+    }
+
+    /**
+     * Apply a more relaxed, natural pose for models without embedded animation
+     * This creates a gentle, approachable stance
+     */
+    applyRelaxedPose() {
+        console.log('Applying relaxed pose for non-animated model...');
+        
+        // Shoulders - drop them down and slightly forward for relaxed look
+        if (this.bones.LeftShoulder) {
+            this.bones.LeftShoulder.rotation.set(1.55, 0.05, -1.25);
+        }
+        if (this.bones.RightShoulder) {
+            this.bones.RightShoulder.rotation.set(1.55, -0.05, 1.25);
+        }
+        
+        // Upper arms - relaxed at sides, slightly forward
+        if (this.bones.LeftArm) {
+            this.bones.LeftArm.rotation.set(1.4, 0.1, -0.2);
+        }
+        if (this.bones.RightArm) {
+            this.bones.RightArm.rotation.set(1.4, -0.1, 0.2);
+        }
+        
+        // Forearms - slight bend for natural look
+        if (this.bones.LeftForeArm) {
+            this.bones.LeftForeArm.rotation.set(0.15, 0.1, 0.05);
+        }
+        if (this.bones.RightForeArm) {
+            this.bones.RightForeArm.rotation.set(0.15, -0.1, -0.05);
+        }
+        
+        // Hands - natural slight curl
+        if (this.bones.LeftHand) {
+            this.bones.LeftHand.rotation.set(0, 0, 0.1);
+        }
+        if (this.bones.RightHand) {
+            this.bones.RightHand.rotation.set(0, 0, -0.1);
+        }
+        
+        // Spine - very slight forward lean for approachable posture
+        if (this.bones.Spine) {
+            this.bones.Spine.rotation.x += 0.02;
+        }
+        if (this.bones.Spine1) {
+            this.bones.Spine1.rotation.x += 0.01;
+        }
+        
+        // Head - very slight tilt for engagement
+        if (this.bones.Head) {
+            this.bones.Head.rotation.x += 0.03;  // Slight nod forward
+            this.bones.Head.rotation.z = 0.02;   // Very slight tilt
+        }
+        
+        // Neck - natural position
+        if (this.bones.Neck) {
+            this.bones.Neck.rotation.x -= 0.02;
+        }
+        
+        console.log('Relaxed pose applied');
+        
+        // Start subtle idle movement for non-animated models
+        this.startIdleMovement();
+    }
+    
+    /**
+     * Subtle procedural idle movement for models without embedded animation
+     * Creates gentle breathing-like motion and micro-movements
+     */
+    startIdleMovement() {
+        if (this.idleMovementInterval) {
+            clearInterval(this.idleMovementInterval);
+        }
+        
+        const startTime = performance.now();
+        
+        // Store original positions for oscillation
+        const originalSpineX = this.bones.Spine?.rotation.x || 0;
+        const originalSpine1X = this.bones.Spine1?.rotation.x || 0;
+        const originalHeadX = this.bones.Head?.rotation.x || 0;
+        const originalHeadZ = this.bones.Head?.rotation.z || 0;
+        const originalLeftShoulderZ = this.bones.LeftShoulder?.rotation.z || 0;
+        const originalRightShoulderZ = this.bones.RightShoulder?.rotation.z || 0;
+        
+        const animate = () => {
+            if (!this.model || this.mixer) {
+                // Stop if model removed or animation mixer takes over
+                cancelAnimationFrame(this.idleAnimationFrame);
+                return;
+            }
+            
+            const elapsed = (performance.now() - startTime) / 1000;
+            
+            // Breathing cycle (~4 seconds)
+            const breathCycle = Math.sin(elapsed * 1.5) * 0.008;
+            
+            // Slower sway cycle (~8 seconds)
+            const swayCycle = Math.sin(elapsed * 0.8) * 0.01;
+            
+            // Very slow head movement (~12 seconds)
+            const headCycle = Math.sin(elapsed * 0.5) * 0.015;
+            
+            // Apply breathing to spine
+            if (this.bones.Spine) {
+                this.bones.Spine.rotation.x = originalSpineX + breathCycle;
+            }
+            if (this.bones.Spine1) {
+                this.bones.Spine1.rotation.x = originalSpine1X + breathCycle * 0.7;
+            }
+            
+            // Apply subtle sway to shoulders
+            if (this.bones.LeftShoulder) {
+                this.bones.LeftShoulder.rotation.z = originalLeftShoulderZ + swayCycle * 0.3;
+            }
+            if (this.bones.RightShoulder) {
+                this.bones.RightShoulder.rotation.z = originalRightShoulderZ - swayCycle * 0.3;
+            }
+            
+            // Apply subtle head movement
+            if (this.bones.Head) {
+                this.bones.Head.rotation.x = originalHeadX + headCycle * 0.5;
+                this.bones.Head.rotation.z = originalHeadZ + Math.sin(elapsed * 0.3) * 0.008;
+            }
+            
+            this.idleAnimationFrame = requestAnimationFrame(animate);
+        };
+        
+        this.idleAnimationFrame = requestAnimationFrame(animate);
+        console.log('Idle movement started for non-animated model');
+    }
+    
+    /**
+     * Stop idle movement (called when switching models or disposing)
+     */
+    stopIdleMovement() {
+        if (this.idleAnimationFrame) {
+            cancelAnimationFrame(this.idleAnimationFrame);
+            this.idleAnimationFrame = null;
+        }
     }
 
     onResize() {
@@ -931,6 +1102,7 @@ class AvatarRenderer {
         if (this.expressionSystem) {
             this.expressionSystem.stop();
         }
+        this.stopIdleMovement();
         if (this.renderer) {
             this.renderer.dispose();
         }
