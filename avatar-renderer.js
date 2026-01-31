@@ -412,8 +412,9 @@ class AvatarRenderer {
                         this.expressionSystem = null;
                     }
                     
-                    // Clear bone references
+                    // Clear bone references and rest pose
                     this.bones = {};
+                    this.restPose = null;
 
                     this.model = gltf.scene;
 
@@ -895,116 +896,143 @@ class AvatarRenderer {
         });
 
         console.log('Found bones:', Object.keys(this.bones).length);
+        
+        // Store the rest pose immediately after finding bones
+        this.storeRestPose();
+        
+        // positionArms is now a no-op - applyRelaxedPose handles non-animated models
         this.positionArms();
     }
 
     positionArms() {
-        // Basic arm positioning - works for both animated and non-animated models
-        // For animated models, this may be overridden by the animation
-        if (this.bones.LeftShoulder) {
-            this.bones.LeftShoulder.rotation.set(1.6, 0, -1.3);
-        }
-        if (this.bones.RightShoulder) {
-            this.bones.RightShoulder.rotation.set(1.6, 0, 1.3);
-        }
-        if (this.bones.LeftArm) {
-            this.bones.LeftArm.rotation.set(1.5, 0, -0.15);
-        }
-        if (this.bones.RightArm) {
-            this.bones.RightArm.rotation.set(1.5, 0, 0.15);
-        }
-        if (this.bones.LeftForeArm) {
-            this.bones.LeftForeArm.rotation.set(0, 0, 0);
-        }
-        if (this.bones.RightForeArm) {
-            this.bones.RightForeArm.rotation.set(0, 0, 0);
-        }
+        // For animated models, this is overridden by animation
+        // Skip for non-animated models - applyRelaxedPose handles those
+        console.log('Arms positioning skipped - will use applyRelaxedPose for non-animated models');
+    }
 
-        console.log('Arms positioned: relaxed pose');
+    /**
+     * Store the original rest pose rotations for all bones
+     * This allows us to apply deltas rather than absolute values
+     */
+    storeRestPose() {
+        this.restPose = {};
+        Object.keys(this.bones).forEach(boneName => {
+            const bone = this.bones[boneName];
+            this.restPose[boneName] = {
+                x: bone.rotation.x,
+                y: bone.rotation.y,
+                z: bone.rotation.z,
+                order: bone.rotation.order
+            };
+        });
+        console.log('Rest pose stored for', Object.keys(this.restPose).length, 'bones');
+        
+        // Log arm bones for debugging
+        ['LeftShoulder', 'RightShoulder', 'LeftArm', 'RightArm', 'LeftForeArm', 'RightForeArm'].forEach(name => {
+            if (this.restPose[name]) {
+                const r = this.restPose[name];
+                console.log(`  ${name}: x=${r.x.toFixed(3)}, y=${r.y.toFixed(3)}, z=${r.z.toFixed(3)}`);
+            }
+        });
+    }
+
+    /**
+     * Apply a rotation delta to a bone relative to its rest pose
+     */
+    applyBoneDelta(boneName, deltaX = 0, deltaY = 0, deltaZ = 0) {
+        const bone = this.bones[boneName];
+        const rest = this.restPose?.[boneName];
+        
+        if (!bone || !rest) {
+            console.warn(`Cannot apply delta to ${boneName} - bone or rest pose missing`);
+            return;
+        }
+        
+        bone.rotation.x = rest.x + deltaX;
+        bone.rotation.y = rest.y + deltaY;
+        bone.rotation.z = rest.z + deltaZ;
+        
+        // Log what we did
+        console.log(`  ${boneName}: rest(${rest.x.toFixed(3)}, ${rest.y.toFixed(3)}, ${rest.z.toFixed(3)}) + delta(${deltaX.toFixed(3)}, ${deltaY.toFixed(3)}, ${deltaZ.toFixed(3)})`);
     }
 
     /**
      * Apply a more relaxed, natural pose for models without embedded animation
-     * This creates a gentle, approachable stance
+     * Uses DELTAS from rest pose rather than absolute values
+     * 
+     * Based on research: Use small rotations (1-5 degrees = 0.017-0.087 radians)
+     * Focus on spine/hip for idle sway, keep arms subtle
      */
     applyRelaxedPose() {
         console.log('Applying relaxed pose for non-animated model...');
+        console.log('Using conservative deltas (radians - 0.05 ≈ 3 degrees)');
         
-        // Shoulders - drop them down and slightly forward for relaxed look
-        if (this.bones.LeftShoulder) {
-            this.bones.LeftShoulder.rotation.set(1.55, 0.05, -1.25);
-        }
-        if (this.bones.RightShoulder) {
-            this.bones.RightShoulder.rotation.set(1.55, -0.05, 1.25);
+        // First store the rest pose if not already done
+        if (!this.restPose) {
+            this.storeRestPose();
         }
         
-        // Upper arms - relaxed at sides, slightly forward
-        if (this.bones.LeftArm) {
-            this.bones.LeftArm.rotation.set(1.4, 0.1, -0.2);
-        }
-        if (this.bones.RightArm) {
-            this.bones.RightArm.rotation.set(1.4, -0.1, 0.2);
-        }
+        // VERY CONSERVATIVE ARM ADJUSTMENTS
+        // The T2 model arms may already be in a reasonable pose
+        // Only apply tiny adjustments - 0.05 rad ≈ 3 degrees
         
-        // Forearms - slight bend for natural look
-        if (this.bones.LeftForeArm) {
-            this.bones.LeftForeArm.rotation.set(0.15, 0.1, 0.05);
-        }
-        if (this.bones.RightForeArm) {
-            this.bones.RightForeArm.rotation.set(0.15, -0.1, -0.05);
-        }
+        // Upper arms - minimal adjustment, let rest pose do most of the work
+        this.applyBoneDelta('LeftArm', 0.05, 0, 0.1);       // Tiny forward tilt, slight inward
+        this.applyBoneDelta('RightArm', 0.05, 0, -0.1);     // Mirror
         
-        // Hands - natural slight curl
-        if (this.bones.LeftHand) {
-            this.bones.LeftHand.rotation.set(0, 0, 0.1);
-        }
-        if (this.bones.RightHand) {
-            this.bones.RightHand.rotation.set(0, 0, -0.1);
-        }
+        // Forearms - very slight bend
+        this.applyBoneDelta('LeftForeArm', 0.08, 0, 0);     // ~5 degree bend
+        this.applyBoneDelta('RightForeArm', 0.08, 0, 0);
         
-        // Spine - very slight forward lean for approachable posture
-        if (this.bones.Spine) {
-            this.bones.Spine.rotation.x += 0.02;
-        }
-        if (this.bones.Spine1) {
-            this.bones.Spine1.rotation.x += 0.01;
-        }
+        // Hands - subtle curl
+        this.applyBoneDelta('LeftHand', 0.05, 0, 0);
+        this.applyBoneDelta('RightHand', 0.05, 0, 0);
         
-        // Head - very slight tilt for engagement
-        if (this.bones.Head) {
-            this.bones.Head.rotation.x += 0.03;  // Slight nod forward
-            this.bones.Head.rotation.z = 0.02;   // Very slight tilt
-        }
+        // Shoulders - almost no change, they should be fine in rest pose
+        this.applyBoneDelta('LeftShoulder', 0, 0, 0.02);    // ~1 degree
+        this.applyBoneDelta('RightShoulder', 0, 0, -0.02);
         
-        // Neck - natural position
-        if (this.bones.Neck) {
-            this.bones.Neck.rotation.x -= 0.02;
-        }
+        // SPINE - This is where micro-movements should focus (per Grok's research)
+        // Very subtle forward lean for approachable posture
+        this.applyBoneDelta('Spine', 0.03, 0, 0);           // ~2 degrees
+        this.applyBoneDelta('Spine1', 0.02, 0, 0);
+        this.applyBoneDelta('Spine2', 0.02, 0, 0);
         
-        console.log('Relaxed pose applied');
+        // HEAD/NECK - Subtle engagement
+        this.applyBoneDelta('Neck', 0.02, 0, 0);
+        this.applyBoneDelta('Head', 0.03, 0, 0.02);         // Slight forward nod, tiny tilt
         
-        // Start subtle idle movement for non-animated models
+        console.log('Relaxed pose applied with conservative deltas');
+        
+        // Start subtle idle movement (breathing, micro-sway)
         this.startIdleMovement();
     }
     
     /**
      * Subtle procedural idle movement for models without embedded animation
-     * Creates gentle breathing-like motion and micro-movements
+     * Based on research: Focus on spine/hip bones with small oscillations
+     * Use noise-like patterns for natural randomness
      */
     startIdleMovement() {
-        if (this.idleMovementInterval) {
-            clearInterval(this.idleMovementInterval);
+        if (this.idleAnimationFrame) {
+            cancelAnimationFrame(this.idleAnimationFrame);
         }
         
         const startTime = performance.now();
         
-        // Store original positions for oscillation
-        const originalSpineX = this.bones.Spine?.rotation.x || 0;
-        const originalSpine1X = this.bones.Spine1?.rotation.x || 0;
-        const originalHeadX = this.bones.Head?.rotation.x || 0;
-        const originalHeadZ = this.bones.Head?.rotation.z || 0;
-        const originalLeftShoulderZ = this.bones.LeftShoulder?.rotation.z || 0;
-        const originalRightShoulderZ = this.bones.RightShoulder?.rotation.z || 0;
+        // Store the CURRENT pose (after applyRelaxedPose) as the base for oscillations
+        const basePose = {};
+        ['Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftArm', 'RightArm'].forEach(name => {
+            if (this.bones[name]) {
+                basePose[name] = {
+                    x: this.bones[name].rotation.x,
+                    y: this.bones[name].rotation.y,
+                    z: this.bones[name].rotation.z
+                };
+            }
+        });
+        
+        console.log('Idle movement starting with base pose stored');
         
         const animate = () => {
             if (!this.model || this.mixer) {
@@ -1015,42 +1043,59 @@ class AvatarRenderer {
             
             const elapsed = (performance.now() - startTime) / 1000;
             
-            // Breathing cycle (~4 seconds)
-            const breathCycle = Math.sin(elapsed * 1.5) * 0.008;
+            // BREATHING - Primary rhythm (~4 second cycle)
+            // Affects spine chain with decreasing amplitude up the chain
+            const breathPhase = Math.sin(elapsed * 1.5);  // ~4 sec cycle
+            const breathAmp = 0.015;  // ~1 degree max
             
-            // Slower sway cycle (~8 seconds)
-            const swayCycle = Math.sin(elapsed * 0.8) * 0.01;
+            // WEIGHT SHIFT - Slower rhythm (~7 second cycle)
+            // Subtle side-to-side on spine
+            const swayPhase = Math.sin(elapsed * 0.9);
+            const swayAmp = 0.008;  // Very subtle
             
-            // Very slow head movement (~12 seconds)
-            const headCycle = Math.sin(elapsed * 0.5) * 0.015;
+            // HEAD MICRO-MOVEMENT - Slowest, most random-feeling
+            // Multiple overlapping frequencies for natural feel
+            const headX = Math.sin(elapsed * 0.4) * 0.012 + Math.sin(elapsed * 0.7) * 0.006;
+            const headZ = Math.sin(elapsed * 0.3) * 0.008 + Math.sin(elapsed * 0.5) * 0.004;
             
-            // Apply breathing to spine
-            if (this.bones.Spine) {
-                this.bones.Spine.rotation.x = originalSpineX + breathCycle;
+            // ARM MICRO-SWAY - Very subtle, tied to breathing
+            const armSway = breathPhase * 0.005;
+            
+            // Apply to spine (breathing + weight shift)
+            if (this.bones.Spine && basePose.Spine) {
+                this.bones.Spine.rotation.x = basePose.Spine.x + breathPhase * breathAmp;
+                this.bones.Spine.rotation.z = basePose.Spine.z + swayPhase * swayAmp;
             }
-            if (this.bones.Spine1) {
-                this.bones.Spine1.rotation.x = originalSpine1X + breathCycle * 0.7;
+            if (this.bones.Spine1 && basePose.Spine1) {
+                this.bones.Spine1.rotation.x = basePose.Spine1.x + breathPhase * breathAmp * 0.7;
+                this.bones.Spine1.rotation.z = basePose.Spine1.z + swayPhase * swayAmp * 0.5;
+            }
+            if (this.bones.Spine2 && basePose.Spine2) {
+                this.bones.Spine2.rotation.x = basePose.Spine2.x + breathPhase * breathAmp * 0.5;
             }
             
-            // Apply subtle sway to shoulders
-            if (this.bones.LeftShoulder) {
-                this.bones.LeftShoulder.rotation.z = originalLeftShoulderZ + swayCycle * 0.3;
+            // Apply to neck/head (micro-movements)
+            if (this.bones.Neck && basePose.Neck) {
+                this.bones.Neck.rotation.x = basePose.Neck.x + headX * 0.3;
             }
-            if (this.bones.RightShoulder) {
-                this.bones.RightShoulder.rotation.z = originalRightShoulderZ - swayCycle * 0.3;
+            if (this.bones.Head && basePose.Head) {
+                this.bones.Head.rotation.x = basePose.Head.x + headX;
+                this.bones.Head.rotation.z = basePose.Head.z + headZ;
             }
             
-            // Apply subtle head movement
-            if (this.bones.Head) {
-                this.bones.Head.rotation.x = originalHeadX + headCycle * 0.5;
-                this.bones.Head.rotation.z = originalHeadZ + Math.sin(elapsed * 0.3) * 0.008;
+            // Apply subtle arm movement (connected to breathing)
+            if (this.bones.LeftArm && basePose.LeftArm) {
+                this.bones.LeftArm.rotation.z = basePose.LeftArm.z + armSway;
+            }
+            if (this.bones.RightArm && basePose.RightArm) {
+                this.bones.RightArm.rotation.z = basePose.RightArm.z - armSway;
             }
             
             this.idleAnimationFrame = requestAnimationFrame(animate);
         };
         
         this.idleAnimationFrame = requestAnimationFrame(animate);
-        console.log('Idle movement started for non-animated model');
+        console.log('Idle movement animation loop started');
     }
     
     /**
